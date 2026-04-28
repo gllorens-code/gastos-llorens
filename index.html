@@ -190,7 +190,7 @@
 
   /* ── Responsive ── */
   @media(max-width:768px){
-    .kpi-row{grid-template-columns:repeat(2,1fr);}
+    .kpi-row{grid-template-columns:repeat(2,1fr) !important;}
     .main-grid{grid-template-columns:1fr;}
     .grp-header{grid-template-columns:20px 1fr 80px 80px 0 24px;}
     .grp-header>*:nth-child(5){display:none;}
@@ -205,6 +205,77 @@
     .grp-header{grid-template-columns:20px 1fr 70px 0 0 24px;}
     .grp-header>*:nth-child(4),.grp-header>*:nth-child(5){display:none;}
   }
+
+  /* ── New transaction modal ── */
+  .fab {
+    display:inline-flex; align-items:center; gap:8px;
+    padding:10px 20px; border-radius:30px;
+    background:var(--green); border:none; color:#fff;
+    font-family:var(--font-body); font-size:13px; font-weight:600;
+    cursor:pointer; transition:opacity 0.15s, transform 0.1s;
+    box-shadow:0 4px 20px rgba(46,204,138,0.35);
+    margin-bottom:20px;
+  }
+  .fab:hover{opacity:0.9;} .fab:active{transform:scale(0.97);}
+  .fab-icon{font-size:18px;line-height:1;}
+
+  .txn-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.82);z-index:800;
+    display:none;align-items:flex-start;justify-content:center;
+    backdrop-filter:blur(6px);padding:20px 16px;
+    padding-top:calc(20px + env(safe-area-inset-top));overflow-y:auto;}
+  .txn-modal-overlay.open{display:flex;}
+  .txn-modal{background:var(--card);border:1px solid var(--border);border-radius:var(--r);
+    width:min(440px,100%);box-shadow:0 24px 80px rgba(0,0,0,0.6);
+    animation:modalIn 0.2s ease;}
+  .txn-modal-header{display:flex;align-items:center;justify-content:space-between;
+    padding:18px 20px;border-bottom:1px solid var(--border);}
+  .txn-modal-title{font-family:var(--font-display);font-size:20px;font-weight:400;color:var(--text);}
+  .txn-modal-close{width:28px;height:28px;border-radius:50%;background:var(--bg3);
+    border:1px solid var(--border);color:var(--text2);font-size:13px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;transition:all 0.15s;}
+  .txn-modal-close:hover{background:var(--red);color:#fff;border-color:var(--red);}
+  .txn-modal-body{padding:20px;}
+  .txn-modal-body .form-group{margin-bottom:14px;}
+  .btn-add-modal{width:100%;padding:13px;background:var(--green);border:none;
+    border-radius:var(--r2);color:#fff;font-family:var(--font-body);
+    font-size:14px;font-weight:600;cursor:pointer;
+    transition:opacity 0.15s,transform 0.1s;
+    box-shadow:0 4px 16px rgba(46,204,138,0.3);}
+  .btn-add-modal:hover{opacity:0.9;}.btn-add-modal:active{transform:scale(0.98);}
+  .btn-add-modal:disabled{opacity:0.5;cursor:not-allowed;}
+
+  /* ── Deviation cards ── */
+  .dev-card {
+    display:flex; align-items:center; gap:12px;
+    padding:12px 14px; border-radius:var(--r2);
+    margin-bottom:8px; border:1px solid var(--border);
+    background:var(--bg3); transition:background 0.15s;
+  }
+  .dev-card:last-child{margin-bottom:0;}
+  .dev-rank {
+    width:24px; height:24px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--font-mono); font-size:11px; font-weight:700;
+    flex-shrink:0;
+  }
+  .dev-rank.r1{background:rgba(255,91,91,0.2);color:var(--red);}
+  .dev-rank.r2{background:rgba(245,200,66,0.2);color:var(--yellow);}
+  .dev-rank.r3{background:rgba(255,140,66,0.2);color:var(--orange);}
+  .dev-info{flex:1;min-width:0;}
+  .dev-name{font-size:12px;color:var(--text);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .dev-bar-wrap{height:4px;background:var(--bg);border-radius:2px;overflow:hidden;margin-top:5px;}
+  .dev-bar{height:100%;border-radius:2px;transition:width 0.5s ease;}
+  .dev-bar.r1{background:var(--red);}
+  .dev-bar.r2{background:var(--yellow);}
+  .dev-bar.r3{background:var(--orange);}
+  .dev-amounts{text-align:right;flex-shrink:0;}
+  .dev-real{font-family:var(--font-mono);font-size:13px;font-weight:600;}
+  .dev-real.r1{color:var(--red);}
+  .dev-real.r2{color:var(--yellow);}
+  .dev-real.r3{color:var(--orange);}
+  .dev-diff{font-family:var(--font-mono);font-size:10px;color:var(--text3);margin-top:2px;}
+  .dev-ppto{font-family:var(--font-mono);font-size:10px;color:var(--text3);}
+  .dev-empty{text-align:center;padding:20px;color:var(--text3);font-size:12px;font-style:italic;}
 </style>
 </head>
 <body>
@@ -214,6 +285,44 @@
   <div class="sync-bar">
     <div class="sync-dot" id="syncDot"></div>
     <div class="sync-label" id="syncLabel">Conectando...</div>
+  </div>
+
+
+  <!-- FAB: Nuevo Gasto -->
+  <button class="fab" onclick="openTxnModal()">
+    <span class="fab-icon">＋</span> NUEVO GASTO
+  </button>
+
+  <!-- Transaction modal -->
+  <div class="txn-modal-overlay" id="txnModal">
+    <div class="txn-modal">
+      <div class="txn-modal-header">
+        <div class="txn-modal-title">Registrar Gasto</div>
+        <button class="txn-modal-close" onclick="closeTxnModal()">✕</button>
+      </div>
+      <div class="txn-modal-body">
+        <div class="form-group">
+          <label class="form-label">Fecha</label>
+          <input type="date" class="form-input" id="m_txnDate">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Descripción</label>
+          <input type="text" class="form-input" id="m_txnDesc" placeholder="Ej: Copec Las Condes">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Categoría</label>
+          <select class="form-select" id="m_txnCat"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Monto (CLP)</label>
+          <div class="amount-wrap">
+            <span class="amount-prefix">$</span>
+            <input type="number" class="form-input" id="m_txnAmount" placeholder="0" inputmode="numeric">
+          </div>
+        </div>
+        <button class="btn-add-modal" id="m_btnAdd" onclick="addTransactionModal()">+ Agregar Gasto</button>
+      </div>
+    </div>
   </div>
 
   <!-- Header -->
@@ -231,8 +340,9 @@
   </div>
 
   <!-- KPIs -->
-  <div class="kpi-row">
+  <div class="kpi-row" style="grid-template-columns:repeat(5,1fr);">
     <div class="kpi ing"><div class="kpi-label">Ingresos</div><div class="kpi-value" id="kpiIng">—</div><div class="kpi-sub">operacionales</div></div>
+    <div class="kpi" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px;position:relative;overflow:hidden;"><div style="position:absolute;top:0;left:0;right:0;height:2px;background:var(--accent);"></div><div class="kpi-label">Total Presupuestado</div><div class="kpi-value" id="kpiPpto" style="color:var(--accent)">—</div><div class="kpi-sub">planificado este mes</div></div>
     <div class="kpi gto"><div class="kpi-label">Gastado</div><div class="kpi-value" id="kpiGto">—</div><div class="kpi-sub" id="kpiGtoSub">de — ppto</div></div>
     <div class="kpi saldo"><div class="kpi-label">Disponible</div><div class="kpi-value" id="kpiSaldo">—</div><div class="kpi-sub">ingresos − gastado</div></div>
     <div class="kpi pct"><div class="kpi-label">Ejecución</div><div class="kpi-value" id="kpiPct">—</div><div class="kpi-sub" id="kpiDias">—</div></div>
@@ -269,33 +379,28 @@
       <div id="catList"></div>
     </div>
     <div class="right-panel">
+
+      <!-- Hidden inputs still needed for modal sync -->
+      <input type="hidden" id="txnDate">
+      <input type="hidden" id="txnDesc">
+      <select style="display:none" id="txnCat"></select>
+      <input type="hidden" id="txnAmount">
+      <button style="display:none" id="btnAdd"></button>
+
+      <!-- Top 3 desviaciones -->
       <div class="panel">
-        <div class="form-title">Registrar Gasto</div>
-        <div class="form-group">
-          <label class="form-label">Fecha</label>
-          <input type="date" class="form-input" id="txnDate">
+        <div class="section-title" style="margin-bottom:14px;">🚨 Top 3 Desviaciones</div>
+        <div id="deviationsList">
+          <div class="empty-state">Sin gastos registrados</div>
         </div>
-        <div class="form-group">
-          <label class="form-label">Descripción</label>
-          <input type="text" class="form-input" id="txnDesc" placeholder="Ej: Copec Las Condes">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Categoría</label>
-          <select class="form-select" id="txnCat"></select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Monto (CLP)</label>
-          <div class="amount-wrap">
-            <span class="amount-prefix">$</span>
-            <input type="number" class="form-input" id="txnAmount" placeholder="0" inputmode="numeric">
-          </div>
-        </div>
-        <button class="btn-add" id="btnAdd" onclick="addTransaction()">+ Agregar Gasto</button>
       </div>
+
+      <!-- Últimos movimientos -->
       <div class="panel">
         <div class="section-title">Últimos Movimientos</div>
         <div class="txn-list" id="txnList"><div class="empty-state">Conectando...</div></div>
       </div>
+
     </div>
   </div>
 </div>
@@ -375,6 +480,16 @@ const BUDGET_DEFAULT = {
     {g:'MOVILIDAD',        name:'Cajero',                                          ppto:183_000,  note:'Efectivo',                       icon:'🏧'},
     {g:'ALIMENTACIÓN',     name:'Supermercado (Mercadopago)',                      ppto:80_000,   note:'',                               icon:'🛒'},
     {g:'IMPUESTOS',        name:'Contribuciones / SII (provisión)',                ppto:583_333,  note:'1/12 anual',                     icon:'📋'},
+    {g:'GASTOS EXTRAS',    name:'Restaurantes / Delivery',                         ppto:300_000,  note:'Uber Eats, salidas, ocio',       icon:'🍽️'},
+    {g:'GASTOS EXTRAS',    name:'Compras Online / MercadoPago',                    ppto:300_000,  note:'MercadoPago, e-commerce',        icon:'🛒'},
+    {g:'GASTOS EXTRAS',    name:'Salud / Farmacia',                                ppto:150_000,  note:'Cruz Verde, Salcobrand, clínica',icon:'💊'},
+    {g:'GASTOS EXTRAS',    name:'Mascotas',                                        ppto:100_000,  note:'Superzoo, Dr Pet, veterinaria',  icon:'🐾'},
+    {g:'GASTOS EXTRAS',    name:'Hogar / Ferretería',                              ppto:100_000,  note:'Easy, Casa Ideas, mejoramiento', icon:'🔧'},
+    {g:'GASTOS EXTRAS',    name:'Ropa / Calzado',                                  ppto:100_000,  note:'',                               icon:'👕'},
+    {g:'GASTOS EXTRAS',    name:'Deporte / Padel Extra',                           ppto:100_000,  note:'Canchas, torneos, implementos',  icon:'🎾'},
+    {g:'GASTOS EXTRAS',    name:'Transporte (Uber / Taxi)',                        ppto:60_000,   note:'Uber Trip, taxi',                icon:'🚕'},
+    {g:'GASTOS EXTRAS',    name:'Entretenimiento / Viajes',                        ppto:200_000,  note:'Hotel, entradas, eventos',       icon:'✈️'},
+    {g:'GASTOS EXTRAS',    name:'Otros Gastos Extras',                             ppto:200_000,  note:'Cualquier gasto no presupuestado',icon:'📦'},
   ]
 };
 
@@ -585,6 +700,7 @@ function renderKPIs(){
   const dom=isCur?today.getDate():dim;
   const exp=dom/dim;
   document.getElementById('kpiIng').textContent    =fmtS(INGRESOS);
+  document.getElementById('kpiPpto').textContent   =fmtS(TOTAL_PPTO);
   document.getElementById('kpiGto').textContent    =fmtS(totalGasto);
   document.getElementById('kpiGtoSub').textContent =`de ${fmtS(TOTAL_PPTO)} ppto`;
   document.getElementById('kpiSaldo').textContent  =fmtS(disponible);
@@ -628,17 +744,20 @@ function renderTxns(){
 }
 
 function renderSelect(){
-  const sel=document.getElementById('txnCat');
-  sel.innerHTML='';
-  GROUPS.forEach(grp=>{
-    const og=document.createElement('optgroup');
-    og.label=grp;
-    BUDGET_ACTIVE.filter(b=>b.g===grp).forEach(b=>{
-      const o=document.createElement('option');
-      o.value=b.name; o.textContent=b.name;
-      og.appendChild(o);
+  ['txnCat','m_txnCat'].forEach(id=>{
+    const sel=document.getElementById(id);
+    if(!sel) return;
+    sel.innerHTML='';
+    GROUPS.forEach(grp=>{
+      const og=document.createElement('optgroup');
+      og.label=grp;
+      BUDGET_ACTIVE.filter(b=>b.g===grp).forEach(b=>{
+        const o=document.createElement('option');
+        o.value=b.name; o.textContent=b.name;
+        og.appendChild(o);
+      });
+      sel.appendChild(og);
     });
-    sel.appendChild(og);
   });
 }
 
@@ -796,15 +915,65 @@ window.resetBudget=resetBudget;
 
 document.getElementById('editorModal').addEventListener('click',function(e){if(e.target===this)closeEditor();});
 
+
+// ── Top 3 Deviations ──────────────────────────────────────────
+function renderDeviations(){
+  const spent = spentByCategory();
+  const c     = document.getElementById('deviationsList');
+  if(!c) return;
+
+  // Compute deviation for each active budget item
+  const devs = BUDGET_ACTIVE
+    .map(item => {
+      const real = spent[item.name] || 0;
+      const diff = real - item.ppto;
+      const pct  = real / item.ppto;
+      return { name:item.name, ppto:item.ppto, real, diff, pct };
+    })
+    .filter(d => d.real > 0)          // only items with spending
+    .sort((a,b) => b.pct - a.pct)     // sort by % over budget descending
+    .slice(0, 3);
+
+  if(!devs.length){
+    c.innerHTML='<div class="dev-empty">Sin gastos registrados este mes</div>';
+    return;
+  }
+
+  c.innerHTML='';
+  devs.forEach((d,i)=>{
+    const rank  = i+1;
+    const rCls  = 'r'+rank;
+    const pct   = Math.min(d.pct*100,100);
+    const isOver= d.diff > 0;
+    const div   = document.createElement('div');
+    div.className='dev-card';
+    div.innerHTML=`
+      <div class="dev-rank ${rCls}">${rank}</div>
+      <div class="dev-info">
+        <div class="dev-name">${d.name}</div>
+        <div class="dev-bar-wrap">
+          <div class="dev-bar ${rCls}" style="width:${pct}%"></div>
+        </div>
+        <div class="dev-ppto">Ppto: ${fmtS(d.ppto)}</div>
+      </div>
+      <div class="dev-amounts">
+        <div class="dev-real ${rCls}">${fmtS(d.real)}</div>
+        <div class="dev-diff">${isOver ? '▲ +'+fmtS(d.diff) : '▼ '+fmtS(Math.abs(d.diff))+' libre'}</div>
+      </div>`;
+    c.appendChild(div);
+  });
+}
+
 // ── Render all ─────────────────────────────────────────────────
-function renderAll(){renderKPIs();renderCategories();renderTxns();}
+function renderAll(){renderKPIs();renderCategories();renderTxns();renderDeviations();}
 
 // ── Init ───────────────────────────────────────────────────────
 async function init(){
   // Set today's date
   const today=new Date(); const pad=n=>String(n).padStart(2,'0');
-  document.getElementById('txnDate').value=
-    `${today.getFullYear()}-${pad(today.getMonth()+1)}-${pad(today.getDate())}`;
+  const todayStr=`${today.getFullYear()}-${pad(today.getMonth()+1)}-${pad(today.getDate())}`;
+  document.getElementById('txnDate').value=todayStr;
+  document.getElementById('m_txnDate').value=todayStr;
 
   buildMonthDropdown();
   setSyncStatus('syncing','Cargando...');
@@ -815,6 +984,63 @@ async function init(){
 }
 
 init();
+
+// ── Transaction modal ──────────────────────────────────────────
+function openTxnModal(){
+  // Sync date and category from main form
+  document.getElementById('m_txnDate').value  = document.getElementById('txnDate').value;
+  document.getElementById('m_txnCat').value   = document.getElementById('txnCat').value;
+  document.getElementById('m_txnDesc').value  = '';
+  document.getElementById('m_txnAmount').value= '';
+  document.getElementById('txnModal').classList.add('open');
+  setTimeout(()=>document.getElementById('m_txnAmount').focus(), 200);
+}
+window.openTxnModal=openTxnModal;
+
+function closeTxnModal(){
+  document.getElementById('txnModal').classList.remove('open');
+}
+window.closeTxnModal=closeTxnModal;
+
+// Close on overlay click
+document.getElementById('txnModal').addEventListener('click',function(e){
+  if(e.target===this) closeTxnModal();
+});
+
+async function addTransactionModal(){
+  const date  = document.getElementById('m_txnDate').value;
+  const desc  = document.getElementById('m_txnDesc').value.trim();
+  const cat   = document.getElementById('m_txnCat').value;
+  const amount= parseFloat(document.getElementById('m_txnAmount').value);
+  if(!date)              {showToast('Ingresa la fecha',true);return;}
+  if(!cat)               {showToast('Selecciona categoría',true);return;}
+  if(!amount||amount<=0) {showToast('Ingresa un monto válido',true);return;}
+
+  const month=date.substring(0,7);
+  const btn=document.getElementById('m_btnAdd');
+  btn.disabled=true; btn.textContent='Guardando...';
+  setSyncStatus('syncing','Guardando...');
+  try {
+    await addDoc(collection(db,'gastos',month,'txns'),{
+      date, desc, cat, amount, ts:Date.now()
+    });
+    closeTxnModal();
+    document.getElementById('txnDesc').value='';
+    document.getElementById('txnAmount').value='';
+    if(month!==currentMonth){
+      currentMonth=month;
+      document.getElementById('monthSelect').value=month;
+      subscribeMonth(month);
+    }
+    showToast(`${fmt(amount)} registrado ✓`);
+  } catch(e){
+    showToast('Error al guardar',true);
+    setSyncStatus('error','Error');
+  } finally {
+    btn.disabled=false; btn.textContent='+ Agregar Gasto';
+  }
+}
+window.addTransactionModal=addTransactionModal;
 </script>
 </body>
 </html>

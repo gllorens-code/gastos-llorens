@@ -276,6 +276,62 @@
   .dev-diff{font-family:var(--font-mono);font-size:10px;color:var(--text3);margin-top:2px;}
   .dev-ppto{font-family:var(--font-mono);font-size:10px;color:var(--text3);}
   .dev-empty{text-align:center;padding:20px;color:var(--text3);font-size:12px;font-style:italic;}
+
+  .fab-ing {
+    background: #1A5276;
+    box-shadow: 0 4px 20px rgba(26,82,118,0.4);
+  }
+
+  /* ── Income modal ── */
+  .ing-modal-overlay {
+    position:fixed;inset:0;background:rgba(0,0,0,0.82);z-index:800;
+    display:none;align-items:flex-start;justify-content:center;
+    backdrop-filter:blur(6px);padding:20px 16px;
+    padding-top:calc(20px + env(safe-area-inset-top));overflow-y:auto;
+  }
+  .ing-modal-overlay.open{display:flex;}
+  .ing-modal {
+    background:var(--card);border:1px solid #1A5276;border-radius:var(--r);
+    width:min(440px,100%);box-shadow:0 24px 80px rgba(0,0,0,0.6);
+    animation:modalIn 0.2s ease;
+  }
+  .ing-modal-header {
+    display:flex;align-items:center;justify-content:space-between;
+    padding:18px 20px;border-bottom:1px solid var(--border);
+    background:linear-gradient(135deg,#1A5276,#2E75B6);
+    border-radius:var(--r) var(--r) 0 0;
+  }
+  .ing-modal-title{font-family:var(--font-display);font-size:20px;font-weight:400;color:#fff;}
+  .ing-modal-close{width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,0.15);
+    border:1px solid rgba(255,255,255,0.3);color:#fff;font-size:13px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;transition:all 0.15s;}
+  .ing-modal-close:hover{background:var(--red);border-color:var(--red);}
+  .ing-modal-body{padding:20px;}
+  .ing-modal-body .form-group{margin-bottom:14px;}
+  .btn-add-ing {
+    width:100%;padding:13px;background:#1A5276;border:none;
+    border-radius:var(--r2);color:#fff;font-family:var(--font-body);
+    font-size:14px;font-weight:600;cursor:pointer;
+    transition:opacity 0.15s,transform 0.1s;
+    box-shadow:0 4px 16px rgba(26,82,118,0.4);
+  }
+  .btn-add-ing:hover{opacity:0.9;}.btn-add-ing:active{transform:scale(0.98);}
+  .btn-add-ing:disabled{opacity:0.5;cursor:not-allowed;}
+
+  /* Income in transaction list */
+  .txn-item.income .txn-amount{color:var(--green);}
+  .txn-item.income .txn-cat{color:#2E75B6;}
+
+  /* Income summary card */
+  .ing-summary {
+    background:var(--bg3);border:1px solid #1A5276;border-radius:var(--r2);
+    padding:12px 14px;margin-bottom:8px;
+  }
+  .ing-summary-title{font-size:10px;color:#4F9EFF;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;font-weight:500;}
+  .ing-summary-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);}
+  .ing-summary-row:last-child{border-bottom:none;}
+  .ing-summary-label{font-size:12px;color:var(--text2);}
+  .ing-summary-val{font-family:var(--font-mono);font-size:12px;font-weight:600;color:var(--green);}
 </style>
 </head>
 <body>
@@ -289,9 +345,54 @@
 
 
   <!-- FAB: Nuevo Gasto -->
-  <button class="fab" onclick="openTxnModal()">
-    <span class="fab-icon">＋</span> NUEVO GASTO
-  </button>
+  <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
+    <button class="fab" style="margin-bottom:0;" onclick="openTxnModal()">
+      <span class="fab-icon">＋</span> NUEVO GASTO
+    </button>
+    <button class="fab fab-ing" onclick="openIngModal()">
+      <span class="fab-icon">💚</span> INGRESO
+    </button>
+  </div>
+
+
+  <!-- Income modal -->
+  <div class="ing-modal-overlay" id="ingModal">
+    <div class="ing-modal">
+      <div class="ing-modal-header">
+        <div class="ing-modal-title">💚 Registrar Ingreso</div>
+        <button class="ing-modal-close" onclick="closeIngModal()">✕</button>
+      </div>
+      <div class="ing-modal-body">
+        <div class="form-group">
+          <label class="form-label">Fecha</label>
+          <input type="date" class="form-input" id="i_txnDate">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Descripción</label>
+          <input type="text" class="form-input" id="i_txnDesc" placeholder="Ej: Sueldo Icalma Mayo">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Origen</label>
+          <select class="form-select" id="i_txnCat">
+            <option value="Sueldo Icalma">Sueldo Icalma</option>
+            <option value="Transferencia Elisa">Transferencia Elisa</option>
+            <option value="Ingreso Itaú (arriendo depto.)">Ingreso Itaú (arriendo depto.)</option>
+            <option value="Subsidio Salud">Subsidio Salud</option>
+            <option value="Otros Ingresos">Otros Ingresos</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Monto (CLP)</label>
+          <div class="amount-wrap">
+            <span class="amount-prefix" style="color:var(--green);">$</span>
+            <input type="number" class="form-input" id="i_txnAmount" placeholder="0" inputmode="numeric"
+                   style="border-color:#1A5276;color:var(--green);font-family:var(--font-mono);">
+          </div>
+        </div>
+        <button class="btn-add-ing" id="i_btnAdd" onclick="addIncomeModal()">💚 Registrar Ingreso</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Transaction modal -->
   <div class="txn-modal-overlay" id="txnModal">
@@ -386,6 +487,16 @@
       <select style="display:none" id="txnCat"></select>
       <input type="hidden" id="txnAmount">
       <button style="display:none" id="btnAdd"></button>
+
+      <!-- Income summary -->
+      <div class="panel" style="border-color:#1A5276;">
+        <div class="section-title" style="margin-bottom:10px;color:#4F9EFF;">💚 Ingresos del Mes</div>
+        <div class="ing-summary" style="background:transparent;border:none;padding:0;">
+          <div id="incomeSummary">
+            <div style="font-size:11px;color:var(--text3);padding:8px 0;text-align:center;font-style:italic;">Sin ingresos registrados</div>
+          </div>
+        </div>
+      </div>
 
       <!-- Top 3 desviaciones -->
       <div class="panel">
@@ -504,6 +615,8 @@ let collapsed    = Object.fromEntries(GROUPS.map(g=>[g,true]));
 let currentMonth = getCurrentMonth();
 let txns         = [];    // live from Firestore
 let unsubTxns    = null;
+let unsubIncome  = null;
+let incomes      = [];
 
 function getCurrentMonth(){
   const d=new Date();
@@ -541,6 +654,7 @@ async function loadBudgetConfig(){
 // ── Listen to transactions for current month ───────────────────
 function subscribeMonth(month){
   if(unsubTxns) unsubTxns();
+  subscribeIncome(month);
   setSyncStatus('syncing','Sincronizando...');
   const q=query(collection(db,'gastos',month,'txns'), orderBy('ts','desc'));
   unsubTxns=onSnapshot(q, snap=>{
@@ -721,24 +835,39 @@ function renderKPIs(){
 // ── Transactions list ──────────────────────────────────────────
 function renderTxns(){
   const c=document.getElementById('txnList');
-  if(!txns.length){c.innerHTML='<div class="empty-state">Sin gastos registrados este mes</div>';return;}
+  // Merge gastos + ingresos sorted by ts desc
+  const allTxns = [
+    ...txns.map(t=>({...t, type:'gasto'})),
+    ...incomes.map(t=>({...t, type:'ingreso'})),
+  ].sort((a,b)=>(b.ts||0)-(a.ts||0));
+
+  if(!allTxns.length){c.innerHTML='<div class="empty-state">Sin movimientos este mes</div>';return;}
   c.innerHTML='';
-  txns.slice(0,25).forEach(t=>{
+  allTxns.slice(0,30).forEach(t=>{
     const div=document.createElement('div');
-    div.className='txn-item';
+    div.className='txn-item'+(t.type==='ingreso'?' income':'');
     const d=new Date(t.date+'T12:00:00');
     const ds=d.toLocaleDateString('es-CL',{day:'numeric',month:'short'});
+    const amtColor=t.type==='ingreso'?'var(--green)':'var(--red)';
+    const amtPrefix=t.type==='ingreso'?'+ ':'- ';
+    const delBtn=t.type==='gasto'
+      ?`<span class="txn-del" data-id="${t.id}">✕</span>`
+      :`<span class="txn-del" data-id="${t.id}" data-type="ingreso">✕</span>`;
     div.innerHTML=`
       <div class="txn-left">
         <div class="txn-desc">${t.desc||t.cat}</div>
-        <div class="txn-cat">${t.cat}</div>
+        <div class="txn-cat" style="${t.type==='ingreso'?'color:#4F9EFF;':''}">${t.type==='ingreso'?'💚 ':''}${t.cat}</div>
         <div class="txn-date">${ds}</div>
       </div>
       <div class="txn-right">
-        <span class="txn-amount">${fmt(t.amount)}</span>
-        <span class="txn-del" data-id="${t.id}">✕</span>
+        <span class="txn-amount" style="color:${amtColor}">${amtPrefix}${fmt(t.amount)}</span>
+        ${delBtn}
       </div>`;
-    div.querySelector('.txn-del').onclick=(e)=>{e.stopPropagation();deleteTxn(t.id);};
+    div.querySelector('.txn-del').onclick=(e)=>{
+      e.stopPropagation();
+      const isIncome=e.target.dataset.type==='ingreso';
+      isIncome?deleteIncome(t.id):deleteTxn(t.id);
+    };
     c.appendChild(div);
   });
 }
@@ -805,6 +934,18 @@ async function deleteTxn(id){
   try {
     await deleteDoc(doc(db,'gastos',currentMonth,'txns',id));
     showToast('Gasto eliminado');
+  } catch(e){
+    showToast('Error al eliminar',true);
+    setSyncStatus('error','Error');
+  }
+}
+
+async function deleteIncome(id){
+  if(!confirm('¿Eliminar este ingreso?')) return;
+  setSyncStatus('syncing','Eliminando...');
+  try {
+    await deleteDoc(doc(db,'ingresos',currentMonth,'txns',id));
+    showToast('Ingreso eliminado');
   } catch(e){
     showToast('Error al eliminar',true);
     setSyncStatus('error','Error');
@@ -916,6 +1057,102 @@ window.resetBudget=resetBudget;
 document.getElementById('editorModal').addEventListener('click',function(e){if(e.target===this)closeEditor();});
 
 
+
+// ── Income modal ───────────────────────────────────────────────
+function openIngModal(){
+  document.getElementById('i_txnDate').value  = document.getElementById('txnDate').value ||
+    new Date().toISOString().split('T')[0];
+  document.getElementById('i_txnDesc').value  = '';
+  document.getElementById('i_txnAmount').value= '';
+  document.getElementById('ingModal').classList.add('open');
+  setTimeout(()=>document.getElementById('i_txnAmount').focus(), 200);
+}
+window.openIngModal=openIngModal;
+
+function closeIngModal(){
+  document.getElementById('ingModal').classList.remove('open');
+}
+window.closeIngModal=closeIngModal;
+
+document.getElementById('ingModal').addEventListener('click',function(e){
+  if(e.target===this) closeIngModal();
+});
+
+async function addIncomeModal(){
+  const date  = document.getElementById('i_txnDate').value;
+  const desc  = document.getElementById('i_txnDesc').value.trim();
+  const cat   = document.getElementById('i_txnCat').value;
+  const amount= parseFloat(document.getElementById('i_txnAmount').value);
+  if(!date)              {showToast('Ingresa la fecha',true);return;}
+  if(!amount||amount<=0) {showToast('Ingresa un monto válido',true);return;}
+
+  const month = date.substring(0,7);
+  const btn   = document.getElementById('i_btnAdd');
+  btn.disabled=true; btn.textContent='Guardando...';
+  setSyncStatus('syncing','Guardando ingreso...');
+  try {
+    await addDoc(collection(db,'ingresos',month,'txns'),{
+      date,
+      desc: desc || cat,
+      cat,
+      amount,
+      ts: Date.now()
+    });
+    closeIngModal();
+    if(month!==currentMonth){
+      currentMonth=month;
+      document.getElementById('monthSelect').value=month;
+      subscribeMonth(month);
+    }
+    showToast(`💚 ${fmt(amount)} ingresado ✓`);
+  } catch(e){
+    showToast('Error al guardar ingreso',true);
+    setSyncStatus('error','Error');
+  } finally {
+    btn.disabled=false; btn.textContent='💚 Registrar Ingreso';
+  }
+}
+window.addIncomeModal=addIncomeModal;
+
+// ── Subscribe to income for current month ───────────────────────
+
+function subscribeIncome(month){
+  if(unsubIncome) unsubIncome();
+  const q=query(collection(db,'ingresos',month,'txns'), orderBy('ts','desc'));
+  unsubIncome=onSnapshot(q, snap=>{
+    incomes=snap.docs.map(d=>({id:d.id,...d.data()}));
+    renderTxns();
+    renderIncomeSummary();
+    renderKPIs();
+  }, err=>{ console.log('Income listener error',err); });
+}
+
+// ── Income summary in right panel ─────────────────────────────
+function renderIncomeSummary(){
+  const c=document.getElementById('incomeSummary');
+  if(!c) return;
+  const totalInc=incomes.reduce((s,t)=>s+t.amount,0);
+  if(!incomes.length){
+    c.innerHTML='<div style="font-size:11px;color:var(--text3);padding:8px 0;text-align:center;font-style:italic;">Sin ingresos registrados</div>';
+    return;
+  }
+  // Group by category
+  const bycat={};
+  incomes.forEach(t=>{bycat[t.cat]=(bycat[t.cat]||0)+t.amount;});
+  let html='';
+  Object.entries(bycat).sort((a,b)=>b[1]-a[1]).forEach(([cat,val])=>{
+    html+=`<div class="ing-summary-row">
+      <span class="ing-summary-label">${cat}</span>
+      <span class="ing-summary-val">${fmtS(val)}</span>
+    </div>`;
+  });
+  html+=`<div class="ing-summary-row" style="margin-top:4px;border-top:1px solid var(--border);padding-top:8px;">
+    <span style="font-size:11px;font-weight:600;color:var(--green);">TOTAL</span>
+    <span class="ing-summary-val" style="font-size:14px;">${fmtS(totalInc)}</span>
+  </div>`;
+  c.innerHTML=html;
+}
+
 // ── Top 3 Deviations ──────────────────────────────────────────
 function renderDeviations(){
   const spent = spentByCategory();
@@ -965,7 +1202,7 @@ function renderDeviations(){
 }
 
 // ── Render all ─────────────────────────────────────────────────
-function renderAll(){renderKPIs();renderCategories();renderTxns();renderDeviations();}
+function renderAll(){renderKPIs();renderCategories();renderTxns();renderDeviations();renderIncomeSummary();}
 
 // ── Init ───────────────────────────────────────────────────────
 async function init(){

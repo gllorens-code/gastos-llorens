@@ -653,9 +653,15 @@ async function loadBudgetConfig(){
 
 // ── Listen to transactions for current month ───────────────────
 function subscribeMonth(month){
-  if(unsubTxns) unsubTxns();
-  subscribeIncome(month);
+  // Unsub previous listeners
+  if(unsubTxns)   unsubTxns();
+  if(unsubIncome) unsubIncome();
+  // Clear data immediately so old month data doesn't show
+  txns    = [];
+  incomes = [];
+  renderAll();
   setSyncStatus('syncing','Sincronizando...');
+  // Subscribe gastos
   const q=query(collection(db,'gastos',month,'txns'), orderBy('ts','desc'));
   unsubTxns=onSnapshot(q, snap=>{
     txns=snap.docs.map(d=>({id:d.id,...d.data()}));
@@ -665,6 +671,14 @@ function subscribeMonth(month){
     setSyncStatus('error','Error de conexión');
     showToast('Error de conexión con Firebase',true);
   });
+  // Subscribe ingresos
+  const q2=query(collection(db,'ingresos',month,'txns'), orderBy('ts','desc'));
+  unsubIncome=onSnapshot(q2, snap=>{
+    incomes=snap.docs.map(d=>({id:d.id,...d.data()}));
+    renderTxns();
+    renderIncomeSummary();
+    renderKPIs();
+  }, err=>{ console.log('Income listener error',err); });
 }
 
 // ── Formatting ─────────────────────────────────────────────────
@@ -1116,16 +1130,7 @@ window.addIncomeModal=addIncomeModal;
 
 // ── Subscribe to income for current month ───────────────────────
 
-function subscribeIncome(month){
-  if(unsubIncome) unsubIncome();
-  const q=query(collection(db,'ingresos',month,'txns'), orderBy('ts','desc'));
-  unsubIncome=onSnapshot(q, snap=>{
-    incomes=snap.docs.map(d=>({id:d.id,...d.data()}));
-    renderTxns();
-    renderIncomeSummary();
-    renderKPIs();
-  }, err=>{ console.log('Income listener error',err); });
-}
+// subscribeIncome inlined in subscribeMonth
 
 // ── Income summary in right panel ─────────────────────────────
 function renderIncomeSummary(){

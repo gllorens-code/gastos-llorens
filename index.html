@@ -2,6 +2,9 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -338,9 +341,10 @@
 <div class="wrap">
 
   <!-- Sync bar -->
-  <div class="sync-bar">
+  <div class="sync-bar" style="gap:16px;">
     <div class="sync-dot" id="syncDot"></div>
     <div class="sync-label" id="syncLabel">Conectando...</div>
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);">v2.1</div>
   </div>
 
 
@@ -653,17 +657,23 @@ async function loadBudgetConfig(){
 
 // ── Listen to transactions for current month ───────────────────
 function subscribeMonth(month){
-  // Unsub previous listeners
-  if(unsubTxns)   unsubTxns();
-  if(unsubIncome) unsubIncome();
-  // Clear data immediately so old month data doesn't show
+  // 1. Unsub ALL previous listeners
+  if(unsubTxns)   { unsubTxns();   unsubTxns=null;   }
+  if(unsubIncome) { unsubIncome(); unsubIncome=null; }
+  // 2. Clear arrays and render empty state immediately
   txns    = [];
   incomes = [];
   renderAll();
-  setSyncStatus('syncing','Sincronizando...');
+  setSyncStatus('syncing','Cargando ' + month + '...');
+
+  // 3. Track which month this subscription is for
+  const subscribedMonth = month;
+
   // Subscribe gastos
-  const q=query(collection(db,'gastos',month,'txns'), orderBy('ts','desc'));
+  const q=query(collection(db,'gastos',subscribedMonth,'txns'), orderBy('ts','desc'));
   unsubTxns=onSnapshot(q, snap=>{
+    // Guard: ignore if month changed while waiting for Firebase
+    if(subscribedMonth !== currentMonth) return;
     txns=snap.docs.map(d=>({id:d.id,...d.data()}));
     setSyncStatus('online','Sincronizado ✓');
     renderAll();
@@ -671,9 +681,12 @@ function subscribeMonth(month){
     setSyncStatus('error','Error de conexión');
     showToast('Error de conexión con Firebase',true);
   });
+
   // Subscribe ingresos
-  const q2=query(collection(db,'ingresos',month,'txns'), orderBy('ts','desc'));
+  const q2=query(collection(db,'ingresos',subscribedMonth,'txns'), orderBy('ts','desc'));
   unsubIncome=onSnapshot(q2, snap=>{
+    // Guard: ignore if month changed while waiting for Firebase
+    if(subscribedMonth !== currentMonth) return;
     incomes=snap.docs.map(d=>({id:d.id,...d.data()}));
     renderTxns();
     renderIncomeSummary();
@@ -827,7 +840,10 @@ function renderKPIs(){
   const dim=new Date(y,m,0).getDate();
   const dom=isCur?today.getDate():dim;
   const exp=dom/dim;
-  document.getElementById('kpiIng').textContent    =fmtS(INGRESOS);
+  const totalInc = incomes.reduce((s,t)=>s+t.amount, 0);
+  const ingToShow = totalInc > 0 ? totalInc : INGRESOS;
+  document.getElementById('kpiIng').textContent    =fmtS(ingToShow);
+  document.getElementById('kpiIng').title = totalInc > 0 ? 'Ingresos registrados este mes' : 'Ingresos presupuestados (sin registros aún)';
   document.getElementById('kpiPpto').textContent   =fmtS(TOTAL_PPTO);
   document.getElementById('kpiGto').textContent    =fmtS(totalGasto);
   document.getElementById('kpiGtoSub').textContent =`de ${fmtS(TOTAL_PPTO)} ppto`;

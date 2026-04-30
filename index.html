@@ -344,7 +344,7 @@
   <div class="sync-bar" style="gap:16px;">
     <div class="sync-dot" id="syncDot"></div>
     <div class="sync-label" id="syncLabel">Conectando...</div>
-    <div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);">v2.1</div>
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);">v2.2</div>
   </div>
 
 
@@ -726,6 +726,7 @@ function onMonthChange(m){
   currentMonth=m;
   subscribeMonth(m);
 }
+window.onMonthChange=onMonthChange;
 
 // ── Collapsible groups ─────────────────────────────────────────
 function toggleGroup(grp){

@@ -113,7 +113,7 @@
   .cat-bar-track{height:3px;background:var(--bg3);border-radius:2px;overflow:hidden;}
   .cat-bar{height:100%;border-radius:2px;transition:width 0.4s ease;}
   .cat-bar.ok{background:var(--green);}.cat-bar.near{background:var(--yellow);}.cat-bar.over{background:var(--red);}
-  .cat-pct{font-size:8px;color:var(--text3);font-family:var(--font-mono);margin-top:2px;text-align:right;}
+  .cat-pct{font-size:11px;color:var(--text3);font-family:var(--font-mono);margin-top:3px;text-align:right;font-weight:700;}
   .cat-add-btn{font-size:15px;color:var(--text3);text-align:center;opacity:0;transition:opacity 0.15s,color 0.15s;}
   .cat-row:hover .cat-add-btn{opacity:1;color:var(--accent);}
   .toggle-all-btn{font-size:10px;color:var(--text3);cursor:pointer;font-family:var(--font-mono);padding:3px 9px;border-radius:20px;border:1px solid var(--border);background:var(--bg3);transition:all 0.15s;}
@@ -370,7 +370,7 @@
   <div class="sync-bar" style="gap:16px;">
     <div class="sync-dot" id="syncDot"></div>
     <div class="sync-label" id="syncLabel">Conectando...</div>
-    <div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);">v2.5</div>
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);">v2.6</div>
   </div>
 
 
@@ -859,7 +859,7 @@ function renderCategories(){
           <div class="grp-col-label">Disponible</div>
           <div class="grp-col-val ${over?'over':exact?'exact':'ok'}">${fmtS(gPpto-gReal)}</div>
         </div>
-        <div style="text-align:center;font-size:10px;font-family:var(--font-mono);color:${over?'#FF1744':gReal>0?'#00E676':'var(--text3)'};">${gReal>0?Math.round(gPct*100)+'%':''}</div>
+        <div style="text-align:right;font-size:11px;font-family:var(--font-mono);font-weight:700;color:${over?'#FF1744':exact?'#4F9EFF':gReal>0?'#00E676':'var(--text3)'};">${gReal>0?fmtS(gReal):''}</div>
       </div>`;
     const itemsDiv=document.createElement('div');
     itemsDiv.className='grp-items'+(isOpen?' open':'');
@@ -885,7 +885,7 @@ function renderCategories(){
         </div>
         <div class="cat-bar-wrap">
           <div class="cat-bar-track"><div class="cat-bar ${bc}" style="width:${Math.min(pct*100,100)}%"></div></div>
-          <div class="cat-pct" style="color:${ov?'#FF1744':ex?'#4F9EFF':real>0?'#00E676':'var(--text3)'};font-weight:${real>0?'600':'400'};">${real>0?Math.round(pct*100)+'%':''}</div>
+          <div class="cat-pct" style="color:${ov?'#FF1744':ex?'#4F9EFF':real>0?'#00E676':'var(--text3)'};font-weight:700;">${real>0?fmtS(real):''}</div>
         </div>
         <div class="cat-add-btn">+</div>`;
       row.onclick=()=>{

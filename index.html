@@ -94,7 +94,7 @@
   .grp-col{text-align:right;font-family:var(--font-mono);font-size:11px;}
   .grp-col-label{font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;}
   .grp-col-val{font-weight:500;margin-top:1px;}
-  .grp-col-val.over{color:var(--red);}.grp-col-val.ok{color:var(--green);}.grp-col-val.near{color:var(--yellow);}
+  .grp-col-val.over{color:#FF1744;font-weight:700;}.grp-col-val.ok{color:var(--green);}.grp-col-val.near{color:var(--yellow);}
   .grp-bar-wrap{height:3px;background:var(--bg);border-radius:2px;overflow:hidden;margin-top:2px;}
   .grp-bar{height:100%;border-radius:2px;transition:width 0.4s ease;}
   .grp-bar.ok{background:var(--green);}.grp-bar.near{background:var(--yellow);}.grp-bar.over{background:var(--red);}
@@ -105,10 +105,10 @@
   .cat-icon{font-size:13px;text-align:center;}
   .cat-name{font-size:12px;color:var(--text);font-weight:500;}
   .cat-name-sub{font-size:9px;color:var(--text3);margin-top:1px;}
-  .cat-amounts{text-align:right;font-family:var(--font-mono);font-size:11px;}
+  .cat-amounts{text-align:right;font-family:var(--font-mono);font-size:12px;}
   .cat-ppto{color:var(--text3);}
   .cat-real{font-weight:500;}
-  .cat-real.over{color:var(--red);}.cat-real.ok{color:var(--green);}.cat-real.near{color:var(--yellow);}
+  .cat-real.over{color:#FF1744;font-weight:700;}.cat-real.ok{color:var(--green);}.cat-real.near{color:var(--yellow);}
   .cat-bar-wrap{display:flex;flex-direction:column;}
   .cat-bar-track{height:3px;background:var(--bg3);border-radius:2px;overflow:hidden;}
   .cat-bar{height:100%;border-radius:2px;transition:width 0.4s ease;}
@@ -335,6 +335,32 @@
   .ing-summary-row:last-child{border-bottom:none;}
   .ing-summary-label{font-size:12px;color:var(--text2);}
   .ing-summary-val{font-family:var(--font-mono);font-size:12px;font-weight:600;color:var(--green);}
+
+  /* ── Edit transaction modal ── */
+  .edit-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.82);z-index:850;
+    display:none;align-items:flex-start;justify-content:center;
+    backdrop-filter:blur(6px);padding:20px 16px;
+    padding-top:calc(20px + env(safe-area-inset-top));overflow-y:auto;}
+  .edit-modal-overlay.open{display:flex;}
+  .edit-modal{background:var(--card);border:1px solid var(--yellow);border-radius:var(--r);
+    width:min(440px,100%);box-shadow:0 24px 80px rgba(0,0,0,0.6);animation:modalIn 0.2s ease;}
+  .edit-modal-header{display:flex;align-items:center;justify-content:space-between;
+    padding:18px 20px;border-bottom:1px solid var(--border);
+    background:linear-gradient(135deg,#3D3000,#7F6000);border-radius:var(--r) var(--r) 0 0;}
+  .edit-modal-title{font-family:var(--font-display);font-size:20px;font-weight:400;color:#FFD600;}
+  .edit-modal-close{width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,0.1);
+    border:1px solid rgba(255,255,255,0.2);color:#FFD600;font-size:13px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;transition:all 0.15s;}
+  .edit-modal-close:hover{background:var(--red);color:#fff;border-color:var(--red);}
+  .edit-modal-body{padding:20px;}
+  .btn-save-edit{width:100%;padding:13px;background:#7F6000;border:none;border-radius:var(--r2);
+    color:#FFD600;font-family:var(--font-body);font-size:14px;font-weight:600;cursor:pointer;
+    transition:opacity 0.15s;border:1px solid var(--yellow);}
+  .btn-save-edit:hover{opacity:0.9;}.btn-save-edit:disabled{opacity:0.5;cursor:not-allowed;}
+  .txn-edit{display:inline-block;margin-left:6px;width:16px;height:16px;line-height:16px;
+    text-align:center;border-radius:50%;background:var(--bg3);color:var(--yellow);
+    font-size:9px;cursor:pointer;transition:background 0.15s,color 0.15s;}
+  .txn-edit:hover{background:var(--yellow);color:var(--bg);}
 </style>
 </head>
 <body>
@@ -344,7 +370,7 @@
   <div class="sync-bar" style="gap:16px;">
     <div class="sync-dot" id="syncDot"></div>
     <div class="sync-label" id="syncLabel">Conectando...</div>
-    <div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);">v2.3</div>
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);">v2.4</div>
   </div>
 
 
@@ -358,6 +384,40 @@
     </button>
   </div>
 
+
+
+  <!-- Edit transaction modal -->
+  <div class="edit-modal-overlay" id="editModal">
+    <div class="edit-modal">
+      <div class="edit-modal-header">
+        <div class="edit-modal-title">✏️ Editar Gasto</div>
+        <button class="edit-modal-close" onclick="closeEditModal()">✕</button>
+      </div>
+      <div class="edit-modal-body">
+        <input type="hidden" id="e_txnId">
+        <div class="form-group">
+          <label class="form-label">Fecha</label>
+          <input type="date" class="form-input" id="e_txnDate">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Descripción</label>
+          <input type="text" class="form-input" id="e_txnDesc" placeholder="Descripción del gasto">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Categoría</label>
+          <select class="form-select" id="e_txnCat"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Monto (CLP)</label>
+          <div class="amount-wrap">
+            <span class="amount-prefix">$</span>
+            <input type="number" class="form-input" id="e_txnAmount" inputmode="numeric">
+          </div>
+        </div>
+        <button class="btn-save-edit" id="e_btnSave" onclick="saveEditedTxn()">✓ Guardar Cambios</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Income modal -->
   <div class="ing-modal-overlay" id="ingModal">
@@ -382,6 +442,7 @@
             <option value="Transferencia Elisa">Transferencia Elisa</option>
             <option value="Ingreso Itaú (arriendo depto.)">Ingreso Itaú (arriendo depto.)</option>
             <option value="Subsidio Salud">Subsidio Salud</option>
+            <option value="CTuristico">CTuristico</option>
             <option value="Papá">Papá</option>
             <option value="Otros Ingresos">Otros Ingresos</option>
           </select>
@@ -539,6 +600,10 @@
         <div class="ing-label">Subsidio Salud<small>Constante mensual</small></div>
         <input class="ing-input" id="ed_ing_subsidio" type="number" onchange="markChanged(this)" oninput="markChanged(this)">
       </div>
+      <div class="ing-editor" style="margin-bottom:20px;">
+        <div class="ing-label">CTuristico<small>Casa turística mensual</small></div>
+        <input class="ing-input" id="ed_ing_cturistico" type="number" onchange="markChanged(this)" oninput="markChanged(this)">
+      </div>
       <div id="editorGroups"></div>
     </div>
     <div class="modal-footer">
@@ -574,10 +639,12 @@ const db  = getFirestore(app);
 const BUDGET_DEFAULT = {
   ing_icalma:   6_373_000,
   ing_subsidio:    90_000,
+  ing_cturistico: 1_700_000,
   items: [
-    {g:'CRÉDITOS / DEUDA', name:'Crédito Edwards (consolidado)',                 ppto:1_050_000, note:'🆕 Consolida crédito + LC + TC', icon:'🏦'},
-    {g:'CRÉDITOS / DEUDA', name:'Crédito Itaú (consumo)',                         ppto:429_000,  note:'Traspaso cta. Itaú',             icon:'🏦'},
-    {g:'CRÉDITOS / DEUDA', name:'Dividendo Depto. (neto $0)',                     ppto:1_600_000,note:'Neto con ingreso Itaú',           icon:'🏢', neto:true},
+    {g:'CRÉDITO / DIVIDENDO', name:'Crédito Edwards (consolidado)',                 ppto:1_050_000, note:'🆕 Consolida crédito + LC + TC', icon:'🏦'},
+    {g:'CRÉDITO / DIVIDENDO', name:'Crédito Itaú (consumo)',                         ppto:429_000,  note:'Traspaso cta. Itaú',             icon:'🏦'},
+    {g:'CRÉDITO / DIVIDENDO', name:'Dividendo Depto. (neto $0)',                     ppto:1_600_000,note:'Neto con ingreso Itaú',           icon:'🏢', neto:true},
+    {g:'CRÉDITO / DIVIDENDO', name:'CTuristico',                                          ppto:1_700_000,note:'Ingreso neto casa turística',       icon:'🏡', neto:true},
     {g:'EDUCACIÓN',        name:'Colegios hijas — PAC TC 8880',                   ppto:2_000_000,note:'PAC fijo desde Mar-2026',         icon:'🎓'},
     {g:'CASA',             name:'Arriendo casa (Benjamin Delard)',                 ppto:1_000_000,note:'Mensual fijo',                    icon:'🏠'},
     {g:'CASA',             name:'Bodega SJ (Inmobiliaria Santa Ana)',              ppto:100_000,  note:'✅ Real $101K/mes',               icon:'📦'},
@@ -611,7 +678,7 @@ const BUDGET_DEFAULT = {
 
 // ── State ──────────────────────────────────────────────────────
 let budget       = JSON.parse(JSON.stringify(BUDGET_DEFAULT));
-let INGRESOS     = budget.ing_icalma + budget.ing_subsidio;
+let INGRESOS     = budget.ing_icalma + budget.ing_subsidio + (budget.ing_cturistico||1_700_000);
 let BUDGET_ACTIVE= budget.items.filter(b=>!b.neto);
 let TOTAL_PPTO   = BUDGET_ACTIVE.reduce((s,b)=>s+b.ppto,0);
 let GROUPS       = [...new Set(BUDGET_ACTIVE.map(b=>b.g))];
@@ -648,7 +715,7 @@ async function loadBudgetConfig(){
         const item=budget.items.find(i=>i.name===ci.name);
         if(item) item.ppto=ci.ppto;
       });
-      INGRESOS    =budget.ing_icalma+budget.ing_subsidio;
+      INGRESOS    =budget.ing_icalma+budget.ing_subsidio+(budget.ing_cturistico||0);
       BUDGET_ACTIVE=budget.items.filter(b=>!b.neto);
       TOTAL_PPTO  =BUDGET_ACTIVE.reduce((s,b)=>s+b.ppto,0);
       GROUPS      =[...new Set(BUDGET_ACTIVE.map(b=>b.g))];
@@ -883,7 +950,7 @@ function renderTxns(){
     const amtColor=t.type==='ingreso'?'var(--green)':'var(--red)';
     const amtPrefix=t.type==='ingreso'?'+ ':'- ';
     const delBtn=t.type==='gasto'
-      ?`<span class="txn-del" data-id="${t.id}">✕</span>`
+      ?`<span class="txn-edit" data-id="${t.id}">✎</span><span class="txn-del" data-id="${t.id}">✕</span>`
       :`<span class="txn-del" data-id="${t.id}" data-type="ingreso">✕</span>`;
     div.innerHTML=`
       <div class="txn-left">
@@ -895,17 +962,23 @@ function renderTxns(){
         <span class="txn-amount" style="color:${amtColor}">${amtPrefix}${fmt(t.amount)}</span>
         ${delBtn}
       </div>`;
-    div.querySelector('.txn-del').onclick=(e)=>{
+    const delEl=div.querySelector('.txn-del');
+    if(delEl) delEl.onclick=(e)=>{
       e.stopPropagation();
       const isIncome=e.target.dataset.type==='ingreso';
       isIncome?deleteIncome(t.id):deleteTxn(t.id);
+    };
+    const editEl=div.querySelector('.txn-edit');
+    if(editEl) editEl.onclick=(e)=>{
+      e.stopPropagation();
+      openEditModal(t);
     };
     c.appendChild(div);
   });
 }
 
 function renderSelect(){
-  ['txnCat','m_txnCat'].forEach(id=>{
+  ['txnCat','m_txnCat','e_txnCat'].forEach(id=>{
     const sel=document.getElementById(id);
     if(!sel) return;
     sel.innerHTML='';
@@ -994,8 +1067,9 @@ window.showToast=showToast;
 
 // ── Budget editor ──────────────────────────────────────────────
 function openEditor(){
-  document.getElementById('ed_ing_icalma').value  =budget.ing_icalma;
-  document.getElementById('ed_ing_subsidio').value=budget.ing_subsidio;
+  document.getElementById('ed_ing_icalma').value      =budget.ing_icalma;
+  document.getElementById('ed_ing_subsidio').value    =budget.ing_subsidio;
+  document.getElementById('ed_ing_cturistico').value  =(budget.ing_cturistico||1_700_000);
   const gDiv=document.getElementById('editorGroups');
   gDiv.innerHTML='';
   const groups=[...new Set(budget.items.filter(i=>!i.neto).map(i=>i.g))];
@@ -1031,8 +1105,9 @@ function markChanged(el){
 window.markChanged=markChanged;
 
 async function saveBudget(){
-  budget.ing_icalma  =parseFloat(document.getElementById('ed_ing_icalma').value)||budget.ing_icalma;
-  budget.ing_subsidio=parseFloat(document.getElementById('ed_ing_subsidio').value)||budget.ing_subsidio;
+  budget.ing_icalma      =parseFloat(document.getElementById('ed_ing_icalma').value)||budget.ing_icalma;
+  budget.ing_subsidio    =parseFloat(document.getElementById('ed_ing_subsidio').value)||budget.ing_subsidio;
+  budget.ing_cturistico  =parseFloat(document.getElementById('ed_ing_cturistico').value)||0;
   budget.items.filter(i=>!i.neto).forEach(item=>{
     const safe=item.name.replace(/[^a-zA-Z0-9]/g,'_');
     const inp=document.getElementById('ed_'+safe);
@@ -1046,7 +1121,7 @@ async function saveBudget(){
       items:budget.items.map(i=>({name:i.name,ppto:i.ppto})),
       updatedAt:Date.now()
     });
-    INGRESOS    =budget.ing_icalma+budget.ing_subsidio;
+    INGRESOS    =budget.ing_icalma+budget.ing_subsidio+(budget.ing_cturistico||0);
     BUDGET_ACTIVE=budget.items.filter(b=>!b.neto);
     TOTAL_PPTO  =BUDGET_ACTIVE.reduce((s,b)=>s+b.ppto,0);
     GROUPS      =[...new Set(BUDGET_ACTIVE.map(b=>b.g))];
@@ -1072,7 +1147,7 @@ async function resetBudget(){
       items:budget.items.map(i=>({name:i.name,ppto:i.ppto})),
       updatedAt:Date.now()
     });
-    INGRESOS    =budget.ing_icalma+budget.ing_subsidio;
+    INGRESOS    =budget.ing_icalma+budget.ing_subsidio+(budget.ing_cturistico||0);
     BUDGET_ACTIVE=budget.items.filter(b=>!b.neto);
     TOTAL_PPTO  =BUDGET_ACTIVE.reduce((s,b)=>s+b.ppto,0);
     GROUPS      =[...new Set(BUDGET_ACTIVE.map(b=>b.g))];
@@ -1089,6 +1164,55 @@ window.resetBudget=resetBudget;
 document.getElementById('editorModal').addEventListener('click',function(e){if(e.target===this)closeEditor();});
 
 
+
+
+// ── Edit transaction ───────────────────────────────────────────
+function openEditModal(txn){
+  document.getElementById('e_txnId').value    = txn.id;
+  document.getElementById('e_txnDate').value  = txn.date;
+  document.getElementById('e_txnDesc').value  = txn.desc || '';
+  document.getElementById('e_txnCat').value   = txn.cat;
+  document.getElementById('e_txnAmount').value= txn.amount;
+  document.getElementById('editModal').classList.add('open');
+  setTimeout(()=>document.getElementById('e_txnAmount').focus(), 200);
+}
+window.openEditModal=openEditModal;
+
+function closeEditModal(){
+  document.getElementById('editModal').classList.remove('open');
+}
+window.closeEditModal=closeEditModal;
+
+document.getElementById('editModal').addEventListener('click',function(e){
+  if(e.target===this) closeEditModal();
+});
+
+async function saveEditedTxn(){
+  const id    = document.getElementById('e_txnId').value;
+  const date  = document.getElementById('e_txnDate').value;
+  const desc  = document.getElementById('e_txnDesc').value.trim();
+  const cat   = document.getElementById('e_txnCat').value;
+  const amount= parseFloat(document.getElementById('e_txnAmount').value);
+  if(!date||!cat||!amount||amount<=0){showToast('Completa todos los campos',true);return;}
+
+  const btn=document.getElementById('e_btnSave');
+  btn.disabled=true; btn.textContent='Guardando...';
+  setSyncStatus('syncing','Guardando...');
+  try {
+    await setDoc(doc(db,'gastos',currentMonth,'txns',id),{
+      date, desc: desc||cat, cat, amount, ts:Date.now()
+    });
+    closeEditModal();
+    showToast('✓ Gasto actualizado');
+    setSyncStatus('online','Sincronizado ✓');
+  } catch(e){
+    showToast('Error al guardar',true);
+    setSyncStatus('error','Error');
+  } finally {
+    btn.disabled=false; btn.textContent='✓ Guardar Cambios';
+  }
+}
+window.saveEditedTxn=saveEditedTxn;
 
 // ── Income modal ───────────────────────────────────────────────
 function openIngModal(){

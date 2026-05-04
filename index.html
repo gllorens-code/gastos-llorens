@@ -370,7 +370,7 @@
   <div class="sync-bar" style="gap:16px;">
     <div class="sync-dot" id="syncDot"></div>
     <div class="sync-label" id="syncLabel">Conectando...</div>
-    <div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);">v2.4</div>
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);">v2.5</div>
   </div>
 
 
@@ -837,9 +837,10 @@ function renderCategories(){
     const gPpto=items.reduce((s,b)=>s+b.ppto,0);
     const gReal=items.reduce((s,b)=>s+(spent[b.name]||0),0);
     const gPct=gReal/gPpto;
-    const over=gReal>gPpto, near=!over&&gReal>gPpto*0.8;
-    const bCls=over?'over':near?'near':'ok';
-    const vCls=over?'over':near?'near':(gReal>0?'ok':'');
+    const over=gReal>gPpto;
+    const exact=!over&&gPpto>0&&gReal===gPpto;
+    const bCls=over?'over':exact?'exact':'ok';
+    const vCls=over?'over':exact?'exact':(gReal>0?'ok':'');
     const isOpen=!collapsed[grp];
     const safe=grp.replace(/[^a-zA-Z0-9]/g,'_');
     const div=document.createElement('div');
@@ -856,17 +857,19 @@ function renderCategories(){
         </div>
         <div class="grp-col">
           <div class="grp-col-label">Disponible</div>
-          <div class="grp-col-val ${over?'over':'ok'}">${fmtS(gPpto-gReal)}</div>
+          <div class="grp-col-val ${over?'over':exact?'exact':'ok'}">${fmtS(gPpto-gReal)}</div>
         </div>
-        <div style="text-align:center;font-size:10px;color:var(--text3);font-family:var(--font-mono);">${gReal>0?Math.round(gPct*100)+'%':''}</div>
+        <div style="text-align:center;font-size:10px;font-family:var(--font-mono);color:${over?'#FF1744':gReal>0?'#00E676':'var(--text3)'};">${gReal>0?Math.round(gPct*100)+'%':''}</div>
       </div>`;
     const itemsDiv=document.createElement('div');
     itemsDiv.className='grp-items'+(isOpen?' open':'');
     itemsDiv.id='grpi_'+safe;
     items.forEach(item=>{
       const real=spent[item.name]||0, pct=real/item.ppto;
-      const ov=real>item.ppto, nr=!ov&&real>item.ppto*0.8;
-      const bc=ov?'over':nr?'near':'ok', rc=ov?'over':nr?'near':(real>0?'ok':'');
+      const ov=real>item.ppto;
+      const ex=!ov&&item.ppto>0&&real===item.ppto;
+      const bc=ov?'over':ex?'exact':'ok';
+      const rc=ov?'over':ex?'exact':(real>0?'ok':'');
       const row=document.createElement('div');
       row.className='cat-row'+(ov?' over':'');
       row.innerHTML=`
@@ -882,7 +885,7 @@ function renderCategories(){
         </div>
         <div class="cat-bar-wrap">
           <div class="cat-bar-track"><div class="cat-bar ${bc}" style="width:${Math.min(pct*100,100)}%"></div></div>
-          <div class="cat-pct">${real>0?Math.round(pct*100)+'%':''}</div>
+          <div class="cat-pct" style="color:${ov?'#FF1744':ex?'#4F9EFF':real>0?'#00E676':'var(--text3)'};font-weight:${real>0?'600':'400'};">${real>0?Math.round(pct*100)+'%':''}</div>
         </div>
         <div class="cat-add-btn">+</div>`;
       row.onclick=()=>{

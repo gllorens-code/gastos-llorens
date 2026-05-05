@@ -414,7 +414,7 @@
   <div class="sync-bar" style="gap:16px;">
     <div class="sync-dot" id="syncDot"></div>
     <div class="sync-label" id="syncLabel">Conectando...</div>
-    <div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);">v2.9</div>
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);">v3.1</div>
   </div>
 
 
@@ -429,6 +429,50 @@
   </div>
 
 
+
+
+  <!-- Edit income modal -->
+  <div class="edit-modal-overlay" id="editIngModal">
+    <div class="edit-modal" style="border-color:#1A5276;">
+      <div class="edit-modal-header" style="background:linear-gradient(135deg,#1A5276,#2E75B6);">
+        <div class="edit-modal-title" style="color:#fff;">✏️ Editar Ingreso</div>
+        <button class="edit-modal-close" onclick="closeEditIngModal()">✕</button>
+      </div>
+      <div class="edit-modal-body">
+        <input type="hidden" id="ei_txnId">
+        <div class="form-group">
+          <label class="form-label">Fecha</label>
+          <input type="date" class="form-input" id="ei_txnDate">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Descripción</label>
+          <input type="text" class="form-input" id="ei_txnDesc" placeholder="Descripción del ingreso">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Origen</label>
+          <select class="form-select" id="ei_txnCat">
+            <option value="Sueldo Icalma">Sueldo Icalma</option>
+            <option value="Transferencia Elisa">Transferencia Elisa</option>
+            <option value="Ingreso Itaú (arriendo depto.)">Ingreso Itaú (arriendo depto.)</option>
+            <option value="Subsidio Salud">Subsidio Salud</option>
+            <option value="CTuristico">CTuristico</option>
+            <option value="Papá">Papá</option>
+            <option value="Otros Ingresos">Otros Ingresos</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Monto (CLP)</label>
+          <div class="amount-wrap">
+            <span class="amount-prefix" style="color:var(--green);">$</span>
+            <input type="number" class="form-input" id="ei_txnAmount" inputmode="numeric"
+                   style="color:var(--green);font-family:var(--font-mono);">
+          </div>
+        </div>
+        <button class="btn-save-edit" id="ei_btnSave" onclick="saveEditedIncome()"
+                style="background:#1A5276;color:#fff;border-color:#1A5276;">✓ Guardar Cambios</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Edit transaction modal -->
   <div class="edit-modal-overlay" id="editModal">
@@ -723,6 +767,16 @@ const BUDGET_DEFAULT = {
   ]
 };
 
+
+// ── Income → Expense category mapping ─────────────────────────
+// Incomes that map to a specific expense category reduce its net
+const INCOME_TO_CAT = {
+  'CTuristico':             'CTuristico',
+  'Ingreso Itaú (arriendo depto.)': 'Dividendo Depto. (neto $0)',
+  'Transferencia Elisa':    'Transferencia a Elisa (Nana $300K + Eli $200K)',
+  'Papá':                   'Otros Gastos Extras',
+};
+
 // ── State ──────────────────────────────────────────────────────
 let budget       = JSON.parse(JSON.stringify(BUDGET_DEFAULT));
 let INGRESOS     = budget.ing_icalma + budget.ing_subsidio + (budget.ing_cturistico||1_700_000);
@@ -870,8 +924,21 @@ function updateToggleBtn(){
 // ── Spent by category ──────────────────────────────────────────
 function spentByCategory(){
   const s={};
-  txns.forEach(t=>{s[t.cat]=(s[t.cat]||0)+t.amount;});
+  // Add gastos
+  txns.forEach(t=>{ s[t.cat]=(s[t.cat]||0)+t.amount; });
+  // Subtract mapped incomes
+  incomes.forEach(t=>{
+    const cat = INCOME_TO_CAT[t.cat];
+    if(cat) s[cat]=(s[cat]||0)-t.amount;
+  });
   return s;
+}
+
+// Total spent (only positive nets for KPI)
+function totalSpentGross(){
+  const s={};
+  txns.forEach(t=>{ s[t.cat]=(s[t.cat]||0)+t.amount; });
+  return Object.values(s).reduce((a,b)=>a+b,0);
 }
 
 // ── Render categories ──────────────────────────────────────────
@@ -953,10 +1020,19 @@ function renderCategories(){
       const buildTxnDetail = () => {
         const catTxns = txns.filter(t => t.cat === catName)
           .sort((a,b) => (b.ts||0) - (a.ts||0));
+        // Find incomes mapped to this category
+        const catIngs = incomes.filter(t => INCOME_TO_CAT[t.cat] === catName)
+          .sort((a,b) => (b.ts||0) - (a.ts||0));
+
         txnDetail.innerHTML = '';
-        if(!catTxns.length){
+        const totalGasto = catTxns.reduce((s,t)=>s+t.amount,0);
+        const totalIng   = catIngs.reduce((s,t)=>s+t.amount,0);
+        const netAmt     = totalGasto - totalIng;
+
+        if(!catTxns.length && !catIngs.length){
           txnDetail.innerHTML = '<div class="cat-txn-empty">Sin movimientos en esta categoría</div>';
         } else {
+          // Show gastos
           catTxns.forEach(t => {
             const d = new Date(t.date+'T12:00:00');
             const ds = d.toLocaleDateString('es-CL',{day:'numeric',month:'short'});
@@ -965,10 +1041,10 @@ function renderCategories(){
             ti.innerHTML = `
               <div class="cat-txn-left">
                 <div class="cat-txn-desc">${t.desc||t.cat}</div>
-                <div class="cat-txn-date">${ds}</div>
+                <div class="cat-txn-date">📤 ${ds}</div>
               </div>
               <div class="cat-txn-right">
-                <span class="cat-txn-amount">${fmt(t.amount)}</span>
+                <span class="cat-txn-amount" style="color:var(--red);">- ${fmt(t.amount)}</span>
                 <span class="cat-txn-edit" title="Editar">✎</span>
                 <span class="cat-txn-del" title="Eliminar">✕</span>
               </div>`;
@@ -976,14 +1052,39 @@ function renderCategories(){
             ti.querySelector('.cat-txn-del').onclick  = e => { e.stopPropagation(); deleteTxn(t.id); };
             txnDetail.appendChild(ti);
           });
-          // Total row
+          // Show mapped incomes
+          catIngs.forEach(t => {
+            const d = new Date(t.date+'T12:00:00');
+            const ds = d.toLocaleDateString('es-CL',{day:'numeric',month:'short'});
+            const ti = document.createElement('div');
+            ti.className = 'cat-txn-item';
+            ti.style.background = 'rgba(46,204,138,0.05)';
+            ti.innerHTML = `
+              <div class="cat-txn-left">
+                <div class="cat-txn-desc" style="color:var(--green);">${t.desc||t.cat}</div>
+                <div class="cat-txn-date">📥 ${ds} · ${t.cat}</div>
+              </div>
+              <div class="cat-txn-right">
+                <span class="cat-txn-amount" style="color:var(--green);">+ ${fmt(t.amount)}</span>
+                <span class="cat-txn-edit" title="Editar" style="color:var(--green);">✎</span>
+                <span class="cat-txn-del" title="Eliminar">✕</span>
+              </div>`;
+            ti.querySelector('.cat-txn-edit').onclick = e => { e.stopPropagation(); openEditIngModal(t); };
+            ti.querySelector('.cat-txn-del').onclick  = e => { e.stopPropagation(); deleteIncome(t.id); };
+            txnDetail.appendChild(ti);
+          });
+          // Net total row
           const totalDiv = document.createElement('div');
           totalDiv.className = 'cat-txn-total';
-          const totalAmt = catTxns.reduce((s,t)=>s+t.amount,0);
-          const totalColor = ov ? '#FF1744' : '#00E676';
+          const netColor = netAmt <= 0 ? '#00E676' : netAmt > item.ppto ? '#FF1744' : '#00E676';
+          const netLabel = netAmt <= 0
+            ? `${fmt(Math.abs(netAmt))} a favor`
+            : `Neto ${fmt(netAmt)}`;
+          const countLabel = `${catTxns.length} gasto${catTxns.length!==1?'s':''}`
+            + (catIngs.length ? ` · ${catIngs.length} ingreso${catIngs.length!==1?'s':''}` : '');
           totalDiv.innerHTML = `
-            <span class="cat-txn-total-label">${catTxns.length} movimiento${catTxns.length!==1?'s':''}</span>
-            <span class="cat-txn-total-val" style="color:${totalColor}">${fmt(totalAmt)}</span>`;
+            <span class="cat-txn-total-label">${countLabel}</span>
+            <span class="cat-txn-total-val" style="color:${netColor}">${netLabel}</span>`;
           txnDetail.appendChild(totalDiv);
         }
       };
@@ -1021,7 +1122,9 @@ function renderCategories(){
 // ── KPIs ───────────────────────────────────────────────────────
 function renderKPIs(){
   const spent=spentByCategory();
-  const totalGasto=Object.values(spent).reduce((s,v)=>s+v,0);
+  // Net per category; sum only positive (actual net spend)
+  const totalGasto=Object.values(spent).reduce((s,v)=>s+(v>0?v:0),0);
+  const totalIngCats=incomes.filter(t=>INCOME_TO_CAT[t.cat]).reduce((s,t)=>s+t.amount,0);
   const disponible=INGRESOS-totalGasto;
   const pct=totalGasto/TOTAL_PPTO;
   const [y,m]=currentMonth.split('-').map(Number);
@@ -1072,7 +1175,7 @@ function renderTxns(){
     const amtPrefix=t.type==='ingreso'?'+ ':'- ';
     const delBtn=t.type==='gasto'
       ?`<span class="txn-edit" data-id="${t.id}">✎</span><span class="txn-del" data-id="${t.id}">✕</span>`
-      :`<span class="txn-del" data-id="${t.id}" data-type="ingreso">✕</span>`;
+      :`<span class="txn-edit" data-id="${t.id}" data-type="ingreso">✎</span><span class="txn-del" data-id="${t.id}" data-type="ingreso">✕</span>`;
     div.innerHTML=`
       <div class="txn-left">
         <div class="txn-desc">${t.desc||t.cat}</div>
@@ -1092,7 +1195,8 @@ function renderTxns(){
     const editEl=div.querySelector('.txn-edit');
     if(editEl) editEl.onclick=(e)=>{
       e.stopPropagation();
-      openEditModal(t);
+      if(t.type==='ingreso') openEditIngModal(t);
+      else openEditModal(t);
     };
     c.appendChild(div);
   });
@@ -1286,6 +1390,55 @@ document.getElementById('editorModal').addEventListener('click',function(e){if(e
 
 
 
+
+
+// ── Edit income ────────────────────────────────────────────────
+function openEditIngModal(txn){
+  document.getElementById('ei_txnId').value    = txn.id;
+  document.getElementById('ei_txnDate').value  = txn.date;
+  document.getElementById('ei_txnDesc').value  = txn.desc || '';
+  document.getElementById('ei_txnCat').value   = txn.cat;
+  document.getElementById('ei_txnAmount').value= txn.amount;
+  document.getElementById('editIngModal').classList.add('open');
+  setTimeout(()=>document.getElementById('ei_txnAmount').focus(), 200);
+}
+window.openEditIngModal=openEditIngModal;
+
+function closeEditIngModal(){
+  document.getElementById('editIngModal').classList.remove('open');
+}
+window.closeEditIngModal=closeEditIngModal;
+
+document.getElementById('editIngModal').addEventListener('click',function(e){
+  if(e.target===this) closeEditIngModal();
+});
+
+async function saveEditedIncome(){
+  const id    = document.getElementById('ei_txnId').value;
+  const date  = document.getElementById('ei_txnDate').value;
+  const desc  = document.getElementById('ei_txnDesc').value.trim();
+  const cat   = document.getElementById('ei_txnCat').value;
+  const amount= parseFloat(document.getElementById('ei_txnAmount').value);
+  if(!date||!cat||!amount||amount<=0){showToast('Completa todos los campos',true);return;}
+
+  const btn=document.getElementById('ei_btnSave');
+  btn.disabled=true; btn.textContent='Guardando...';
+  setSyncStatus('syncing','Guardando...');
+  try {
+    await setDoc(doc(db,'ingresos',currentMonth,'txns',id),{
+      date, desc: desc||cat, cat, amount, ts:Date.now()
+    });
+    closeEditIngModal();
+    showToast('✓ Ingreso actualizado');
+    setSyncStatus('online','Sincronizado ✓');
+  } catch(e){
+    showToast('Error al guardar',true);
+    setSyncStatus('error','Error');
+  } finally {
+    btn.disabled=false; btn.textContent='✓ Guardar Cambios';
+  }
+}
+window.saveEditedIncome=saveEditedIncome;
 
 // ── Edit transaction ───────────────────────────────────────────
 function openEditModal(txn){

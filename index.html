@@ -414,7 +414,7 @@
   <div class="sync-bar" style="gap:16px;">
     <div class="sync-dot" id="syncDot"></div>
     <div class="sync-label" id="syncLabel">Conectando...</div>
-    <div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);">v3.1</div>
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);">v3.2</div>
   </div>
 
 
@@ -949,12 +949,14 @@ function renderCategories(){
   GROUPS.forEach(grp=>{
     const items=BUDGET_ACTIVE.filter(b=>b.g===grp);
     const gPpto=items.reduce((s,b)=>s+b.ppto,0);
-    const gReal=items.reduce((s,b)=>s+(spent[b.name]||0),0);
-    const gPct=gReal/gPpto;
-    const over=gReal>gPpto;
-    const exact=!over&&gPpto>0&&gReal===gPpto;
-    const bCls=over?'over':exact?'exact':'ok';
-    const vCls=over?'over':exact?'exact':(gReal>0?'ok':'');
+    const gNet=items.reduce((s,b)=>s+(spent[b.name]||0),0);  // net (can be negative)
+    const gReal=Math.max(gNet,0);
+    const gSurplus=gNet<0;
+    const gPct=gPpto>0?(gNet/gPpto):0;
+    const over=gNet>gPpto&&gPpto>0&&!gSurplus;
+    const exact=!over&&gPpto>0&&gNet===gPpto;
+    const bCls=gSurplus?'ok':over?'over':exact?'exact':'ok';
+    const vCls=gSurplus?'ok':over?'over':exact?'exact':(gReal>0?'ok':'');
     const isOpen=!collapsed[grp];
     const safe=grp.replace(/[^a-zA-Z0-9]/g,'_');
     const div=document.createElement('div');
@@ -966,24 +968,28 @@ function renderCategories(){
         <div class="grp-col"><div class="grp-col-label">Ppto</div><div class="grp-col-val">${fmtS(gPpto)}</div></div>
         <div class="grp-col">
           <div class="grp-col-label">Gastado</div>
-          <div class="grp-col-val ${vCls}">${gReal>0?fmtS(gReal):'—'}</div>
-          <div class="grp-bar-wrap"><div class="grp-bar ${bCls}" style="width:${Math.min(gPct*100,100)}%"></div></div>
+          <div class="grp-col-val ${vCls}">${gSurplus?'💚 '+fmtS(Math.abs(gNet))+' a favor':gReal>0?fmtS(gReal):'—'}</div>
+          <div class="grp-bar-wrap"><div class="grp-bar ${bCls}" style="width:${gSurplus?100:Math.min(gPct*100,100)}%"></div></div>
         </div>
         <div class="grp-col">
           <div class="grp-col-label">Disponible</div>
-          <div class="grp-col-val ${over?'over':exact?'exact':'ok'}">${fmtS(gPpto-gReal)}</div>
+          <div class="grp-col-val ${gSurplus?'ok':over?'over':exact?'exact':'ok'}">${gSurplus?fmtS(Math.abs(gNet))+' favor':fmtS(gPpto-gNet)}</div>
         </div>
-        <div style="text-align:right;font-size:11px;font-family:var(--font-mono);font-weight:700;color:${over?'#FF1744':exact?'#4F9EFF':gReal>0?'#00E676':'var(--text3)'};">${gReal>0?fmtS(gReal):''}</div>
+        <div style="text-align:right;font-size:11px;font-family:var(--font-mono);font-weight:700;color:${gSurplus?'#00E676':over?'#FF1744':exact?'#4F9EFF':gReal>0?'#00E676':'var(--text3)'};">
+          ${gSurplus?'+ '+fmtS(Math.abs(gNet)):gReal>0?fmtS(gReal):''}</div>
       </div>`;
     const itemsDiv=document.createElement('div');
     itemsDiv.className='grp-items'+(isOpen?' open':'');
     itemsDiv.id='grpi_'+safe;
     items.forEach(item=>{
-      const real=spent[item.name]||0, pct=real/item.ppto;
-      const ov=real>item.ppto;
-      const ex=!ov&&item.ppto>0&&real===item.ppto;
-      const bc=ov?'over':ex?'exact':'ok';
-      const rc=ov?'over':ex?'exact':(real>0?'ok':'');
+      const net=spent[item.name]||0;   // net = gasto - ingreso (can be negative = surplus)
+      const real=Math.max(net,0);        // displayed spent = only positive net
+      const surplus=net<0;               // true when income > gasto
+      const pct=item.ppto>0?(net/item.ppto):0;
+      const ov=net>item.ppto&&item.ppto>0;
+      const ex=!ov&&item.ppto>0&&net===item.ppto;
+      const bc=surplus?'ok':ov?'over':ex?'exact':'ok';
+      const rc=surplus?'ok':ov?'over':ex?'exact':(net>0?'ok':'');
 
       // Item wrapper (row + txn detail)
       const itemWrap=document.createElement('div');
@@ -991,8 +997,9 @@ function renderCategories(){
 
       // Cat row
       const row=document.createElement('div');
-      row.className='cat-row'+(ov?' over':'');
+      row.className='cat-row'+(ov&&!surplus?' over':'');
       row.style.borderBottom='none';
+      if(surplus) row.style.background='rgba(46,204,138,0.05)';
       row.innerHTML=`
         <div class="cat-icon">${item.icon||'•'}</div>
         <div>
@@ -1001,12 +1008,12 @@ function renderCategories(){
         </div>
         <div class="cat-amounts"><div class="cat-ppto">${fmtS(item.ppto)}</div><div style="font-size:8px;color:var(--text3)">ppto</div></div>
         <div class="cat-amounts">
-          <div class="cat-real ${rc}">${real>0?fmtS(real):'—'}</div>
-          <div style="font-size:8px;color:var(--text3)">${real>0?(ov?'⚠️ sobre':'gastado'):'sin gasto'}</div>
+          <div class="cat-real ${rc}">${surplus?'💚 '+fmtS(Math.abs(net))+' a favor':net>0?fmtS(net):'—'}</div>
+          <div style="font-size:8px;color:var(--text3)">${surplus?'superávit':net>0?(ov?'⚠️ sobre':'gastado'):'sin gasto'}</div>
         </div>
         <div class="cat-bar-wrap">
-          <div class="cat-bar-track"><div class="cat-bar ${bc}" style="width:${Math.min(pct*100,100)}%"></div></div>
-          <div class="cat-pct" style="color:${ov?'#FF1744':ex?'#4F9EFF':real>0?'#00E676':'var(--text3)'};font-weight:700;">${real>0?fmtS(real):''}</div>
+          <div class="cat-bar-track"><div class="cat-bar ${bc}" style="width:${surplus?100:Math.min(pct*100,100)}%"></div></div>
+          <div class="cat-pct" style="color:${surplus?'#00E676':ov?'#FF1744':ex?'#4F9EFF':net>0?'#00E676':'var(--text3)'};font-weight:700;">${surplus?'+ '+fmtS(Math.abs(net)):net>0?fmtS(net):''}</div>
         </div>
         <div class="cat-add-btn">+</div>`;
 

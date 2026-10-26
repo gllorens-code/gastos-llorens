@@ -414,7 +414,7 @@
   <div class="sync-bar" style="gap:16px;">
     <div class="sync-dot" id="syncDot"></div>
     <div class="sync-label" id="syncLabel">Conectando...</div>
-    <div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);">v3.2</div>
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);">v3.3</div>
   </div>
 
 
@@ -761,6 +761,7 @@ const BUDGET_DEFAULT = {
     {g:'GASTOS EXTRAS',    name:'Deporte / Padel Extra',                           ppto:0,  note:'Canchas, torneos, implementos',  icon:'🎾'},
     {g:'GASTOS EXTRAS',    name:'Transporte (Uber / Taxi)',                        ppto:0,   note:'Uber Trip, taxi',                icon:'🚕'},
     {g:'GASTOS EXTRAS',    name:'Entretenimiento / Viajes',                        ppto:0,  note:'Hotel, entradas, eventos',       icon:'✈️'},
+    {g:'GASTOS EXTRAS',    name:'Niñitas',                                      ppto:0,  note:'Gastos niñitas',                  icon:'👧'},
     {g:'GASTOS EXTRAS',    name:'Puertecillo',                                     ppto:0,  note:'Gastos casa Puertecillo',         icon:'🌊'},
     {g:'GASTOS EXTRAS',    name:'Mercadolibre',                                    ppto:0,  note:'Compras Mercadolibre',             icon:'🛍️'},
     {g:'GASTOS EXTRAS',    name:'Otros Gastos Extras',                             ppto:0,  note:'Cualquier gasto no presupuestado',icon:'📦'},
@@ -975,8 +976,7 @@ function renderCategories(){
           <div class="grp-col-label">Disponible</div>
           <div class="grp-col-val ${gSurplus?'ok':over?'over':exact?'exact':'ok'}">${gSurplus?fmtS(Math.abs(gNet))+' favor':fmtS(gPpto-gNet)}</div>
         </div>
-        <div style="text-align:right;font-size:11px;font-family:var(--font-mono);font-weight:700;color:${gSurplus?'#00E676':over?'#FF1744':exact?'#4F9EFF':gReal>0?'#00E676':'var(--text3)'};">
-          ${gSurplus?'+ '+fmtS(Math.abs(gNet)):gReal>0?fmtS(gReal):''}</div>
+        <div style="text-align:right;font-size:11px;font-family:var(--font-mono);font-weight:700;color:${gSurplus?'#00E676':over?'#FF1744':exact?'#4F9EFF':gReal>0?'#00E676':'var(--text3)'}">${gSurplus?'+ '+fmtS(Math.abs(gNet)):gReal>0?fmtS(gReal):''}</div>
       </div>`;
     const itemsDiv=document.createElement('div');
     itemsDiv.className='grp-items'+(isOpen?' open':'');

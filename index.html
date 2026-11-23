@@ -12,6 +12,7 @@
 <meta name="theme-color" content="#0F1117">
 <title>Control de Gastos GLL</title>
 <link rel="apple-touch-icon" href="https://emojicdn.elk.sh/💰?style=apple">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -1845,27 +1846,29 @@ function handleImportFile(file){
       parseCartola(e.target.result, file.name);
     } catch(err) {
       showToast('Error al leer el archivo: ' + err.message, true);
+      console.error('Import error:', err);
     }
   };
-  // Read as text (CSV or XLS as text fallback)
-  if(file.name.endsWith('.csv')){
-    reader.readAsText(e => parseCartola(e.target.result, file.name));
+  if(file.name.toLowerCase().endsWith('.csv')){
     reader.readAsText(file, 'latin1');
   } else {
-    // For XLS: read as binary and parse manually
-    reader.readAsBinaryString(file);
+    // XLS/XLSX: read as ArrayBuffer for SheetJS
+    reader.readAsArrayBuffer(file);
   }
 }
 window.handleImportFile = handleImportFile;
 
 function parseCartola(data, filename){
   let rows = [];
-  
-  if(filename.endsWith('.csv')){
+  const lname = filename.toLowerCase();
+
+  if(lname.endsWith('.csv')){
     rows = parseCSV(data);
+  } else if(lname.endsWith('.xls') || lname.endsWith('.xlsx')){
+    rows = parseXLSSheetJS(data);
   } else {
-    // XLS: extract text between delimiters using regex for Banco de Chile format
-    rows = parseXLSBinaryBancoChile(data);
+    showToast('Formato no soportado. Use .xls, .xlsx o .csv', true);
+    return;
   }
   
   if(!rows.length){
@@ -1911,69 +1914,60 @@ function parseCSV(text){
   return rows;
 }
 
-function parseXLSBinaryBancoChile(binary){
-  // Extract printable strings from binary XLS
-  // Find all cell strings by scanning for text content
+function parseXLSSheetJS(arrayBuffer){
+  // Use SheetJS (xlsx.js) to parse XLS/XLSX from Banco de Chile
   const rows = [];
-  
-  // Convert binary to array for scanning
-  const bytes = [];
-  for(let i=0; i<binary.length; i++) bytes.push(binary.charCodeAt(i));
-  
-  // Extract all readable strings (length > 3)
-  const strings = [];
-  let cur = '';
-  for(let i=0; i<bytes.length; i++){
-    const b = bytes[i];
-    if(b >= 32 && b < 127){
-      cur += String.fromCharCode(b);
-    } else if(b === 0 && cur.length > 2){
-      // UTF-16 null byte — skip, keep building
-      if(cur.length > 3){ strings.push(cur.trim()); cur=''; }
-    } else {
-      if(cur.length > 3){ strings.push(cur.trim()); cur=''; }
-      else cur='';
-    }
-  }
-  if(cur.length > 3) strings.push(cur.trim());
-  
-  // Find date-like strings — both DD/MM and DD/MM/YYYY
-  const dateRe = /^\d{1,2}\/\d{1,2}(\/\d{4})?$/;
-  const amountRe = /^\d{1,10}$/;
+  try {
+    const wb = XLSX.read(arrayBuffer, { type: 'array', cellDates: false, raw: true });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const aoa = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
 
-  let i = 0;
-  while(i < strings.length){
-    const s = strings[i];
-    if(dateRe.test(s)){
-      const date = s;
-      let desc = '', cargo = 0, abono = 0;
-      // Next significant string should be description
-      let j = i+1;
-      while(j < strings.length && j < i+5){
-        const ns = strings[j];
-        if(ns.length > 3 && !dateRe.test(ns) && !amountRe.test(ns)){
-          desc = ns; j++; break;
-        }
-        j++;
+    // Find header row containing "Fecha" and "Descripci"
+    let headerIdx = -1;
+    let cargoCol = -1, abonoCol = -1, dateCol = -1, descCol = -1;
+
+    for(let r = 0; r < aoa.length; r++){
+      const row = aoa[r].map(c => String(c));
+      const hasFecha = row.some(c => /^Fecha$/i.test(c.trim()));
+      const hasDesc  = row.some(c => /Descripci/i.test(c.trim()));
+      if(hasFecha && hasDesc){
+        headerIdx = r;
+        dateCol  = row.findIndex(c => /^Fecha$/i.test(c.trim()));
+        descCol  = row.findIndex(c => /Descripci/i.test(c.trim()));
+        cargoCol = row.findIndex(c => /Cargos/i.test(c.trim()));
+        abonoCol = row.findIndex(c => /Abonos/i.test(c.trim()));
+        break;
       }
-      // Skip canal, find amounts
-      while(j < strings.length && j < i+8){
-        const ns = strings[j];
-        if(amountRe.test(ns) && parseInt(ns) > 0){
-          if(!cargo){ cargo = parseInt(ns); }
-          else if(!abono){ abono = parseInt(ns); }
-        }
-        j++;
-      }
-      if(desc && (cargo > 0 || abono > 0)){
-        if(!desc.includes('SALDO INICIAL') && !desc.includes('Saldo')){
-          rows.push({ date: normalizeDate(date), desc, cargo, abono });
-        }
-      }
-      i = j;
-    } else {
-      i++;
     }
+
+    if(headerIdx < 0){
+      console.warn('SheetJS: no header found. Rows 0-5:', JSON.stringify(aoa.slice(0,5)));
+      return rows;
+    }
+
+    for(let r = headerIdx + 1; r < aoa.length; r++){
+      const row = aoa[r];
+      const rawDate = String(row[dateCol] || '').trim();
+      const desc    = String(row[descCol] || '').trim();
+      if(!rawDate || !desc || /^Fecha$/i.test(rawDate)) continue;
+      if(/SALDO INICIAL/i.test(desc) || desc === '') continue;
+
+      const cargo = parseFloat(String(row[cargoCol] || '').replace(/[^0-9.]/g,'')) || 0;
+      const abono = parseFloat(String(row[abonoCol] || '').replace(/[^0-9.]/g,'')) || 0;
+      if(cargo === 0 && abono === 0) continue;
+
+      // Date may be Excel serial (5-digit number) or string DD/MM or DD/MM/YYYY
+      let dateStr = rawDate;
+      if(/^\d{5}$/.test(rawDate)){
+        const d = XLSX.SSF.parse_date_code(parseInt(rawDate));
+        if(d) dateStr = `${String(d.d).padStart(2,'0')}/${String(d.m).padStart(2,'0')}/${d.y}`;
+      }
+
+      rows.push({ date: normalizeDate(dateStr), desc, cargo, abono });
+    }
+    console.log(`SheetJS: parsed ${rows.length} transactions`);
+  } catch(e){
+    console.error('SheetJS parse error:', e);
   }
   return rows;
 }

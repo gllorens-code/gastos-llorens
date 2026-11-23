@@ -405,6 +405,89 @@
   }
   .cat-txn-total-label { color: var(--text2); font-weight: 500; }
   .cat-txn-total-val { font-weight: 700; }
+
+  /* ── Import modal ── */
+  .import-modal-overlay {
+    display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75);
+    z-index:1000; align-items:center; justify-content:center; padding:16px;
+  }
+  .import-modal-overlay.open { display:flex; }
+  .import-modal {
+    background:var(--card); border:1px solid #2a4a2a; border-radius:16px;
+    width:100%; max-width:860px; max-height:90vh; display:flex; flex-direction:column;
+    box-shadow:0 20px 60px rgba(0,0,0,0.5);
+  }
+  .import-header {
+    padding:16px 20px; background:linear-gradient(135deg,#1a3a1a,#2d5a2d);
+    border-radius:16px 16px 0 0; display:flex; align-items:center; gap:12px;
+  }
+  .import-header-title { font-size:16px; font-weight:700; color:#fff; flex:1; }
+  .import-close { background:none; border:none; color:rgba(255,255,255,0.7); font-size:18px; cursor:pointer; padding:4px 8px; border-radius:6px; }
+  .import-close:hover { color:#fff; background:rgba(255,255,255,0.1); }
+  .import-body { padding:16px; overflow-y:auto; flex:1; }
+  .import-drop-zone {
+    border:2px dashed var(--border); border-radius:12px; padding:32px;
+    text-align:center; cursor:pointer; transition:all 0.2s;
+    background:var(--bg2);
+  }
+  .import-drop-zone:hover, .import-drop-zone.drag-over {
+    border-color:var(--green); background:rgba(46,204,138,0.05);
+  }
+  .import-drop-icon { font-size:36px; margin-bottom:8px; }
+  .import-drop-label { font-size:14px; color:var(--text2); }
+  .import-drop-sub { font-size:11px; color:var(--text3); margin-top:4px; }
+  .import-preview { margin-top:16px; }
+  .import-preview-title {
+    font-size:12px; font-weight:600; color:var(--text2);
+    margin-bottom:8px; display:flex; align-items:center; gap:8px;
+  }
+  .import-count { background:var(--green); color:var(--bg); border-radius:10px; padding:1px 8px; font-size:11px; font-weight:700; }
+  .import-table-wrap { overflow-x:auto; border-radius:8px; border:1px solid var(--border); }
+  .import-table {
+    width:100%; border-collapse:collapse; font-size:12px;
+  }
+  .import-table th {
+    background:var(--bg3); color:var(--text2); padding:8px 10px;
+    text-align:left; font-weight:600; white-space:nowrap;
+    position:sticky; top:0;
+  }
+  .import-table td { padding:6px 10px; border-top:1px solid var(--border); vertical-align:middle; }
+  .import-table tr:hover td { background:var(--bg2); }
+  .import-row-skip td { opacity:0.4; }
+  .import-cat-sel {
+    background:var(--bg3); border:1px solid var(--border); color:var(--text);
+    border-radius:6px; padding:4px 6px; font-size:11px; width:100%; min-width:160px;
+    cursor:pointer;
+  }
+  .import-cat-sel:focus { outline:none; border-color:var(--accent); }
+  .import-cat-sel.assigned { border-color:var(--green); color:var(--green); }
+  .import-cat-sel.skip-opt { border-color:var(--text3); color:var(--text3); }
+  .import-skip-cb { cursor:pointer; accent-color:var(--red); width:14px; height:14px; }
+  .import-amount { font-family:var(--font-mono); font-size:12px; color:var(--red); font-weight:600; }
+  .import-amount.income { color:var(--green); }
+  .import-footer {
+    padding:12px 20px; border-top:1px solid var(--border);
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    background:var(--bg2); border-radius:0 0 16px 16px; flex-wrap:wrap;
+  }
+  .import-footer-info { font-size:11px; color:var(--text3); }
+  .import-footer-info span { color:var(--green); font-weight:700; }
+  .btn-import-confirm {
+    background:var(--green); color:var(--bg); border:none; border-radius:8px;
+    padding:10px 24px; font-size:13px; font-weight:700; cursor:pointer;
+    transition:opacity 0.15s;
+  }
+  .btn-import-confirm:hover { opacity:0.85; }
+  .btn-import-confirm:disabled { opacity:0.4; cursor:not-allowed; }
+  .import-auto-btn {
+    background:var(--bg3); color:var(--text2); border:1px solid var(--border);
+    border-radius:6px; padding:4px 10px; font-size:11px; cursor:pointer;
+  }
+  .import-auto-btn:hover { border-color:var(--accent); color:var(--accent); }
+  .import-month-sel {
+    background:var(--bg3); border:1px solid var(--border); color:var(--text);
+    border-radius:6px; padding:6px 10px; font-size:12px; cursor:pointer;
+  }
 </style>
 </head>
 <body>
@@ -414,7 +497,7 @@
   <div class="sync-bar" style="gap:16px;">
     <div class="sync-dot" id="syncDot"></div>
     <div class="sync-label" id="syncLabel">Conectando...</div>
-    <div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);">v3.3</div>
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);">v3.4</div>
   </div>
 
 
@@ -425,6 +508,9 @@
     </button>
     <button class="fab fab-ing" onclick="openIngModal()">
       <span class="fab-icon">💚</span> INGRESO
+    </button>
+    <button class="fab" onclick="openImportModal()" style="background:linear-gradient(135deg,#1a3a1a,#2d5a2d);border-color:#2d5a2d;">
+      <span class="fab-icon">📥</span> IMPORTAR
     </button>
   </div>
 
@@ -1706,6 +1792,441 @@ async function addTransactionModal(){
   }
 }
 window.addTransactionModal=addTransactionModal;
+
+// ── IMPORT ─────────────────────────
+// ── IMPORT CARTOLA ─────────────────────────────────────────────────────────
+
+let importRows = [];   // parsed rows from file
+
+function openImportModal(){
+  importRows = [];
+  document.getElementById('importPreview').style.display = 'none';
+  document.getElementById('importDropArea').style.display = 'block';
+  document.getElementById('importFileInput').value = '';
+  document.getElementById('btnImportConfirm').disabled = true;
+  document.getElementById('importFooterInfo').innerHTML = '—';
+  // Build month dropdown
+  const sel = document.getElementById('importMonthSel');
+  sel.innerHTML = '';
+  const months = [];
+  let [y,m] = [2025,11];
+  while(y < 2027||(y===2027&&m<=3)){ months.push(`${y}-${String(m).padStart(2,'0')}`); m++; if(m>12){m=1;y++;} }
+  months.reverse().forEach(mo=>{
+    const [yr,mn] = mo.split('-');
+    const lbl = new Date(yr,mn-1,1).toLocaleDateString('es-CL',{month:'long',year:'numeric'});
+    const o = document.createElement('option');
+    o.value = mo; o.textContent = lbl.charAt(0).toUpperCase()+lbl.slice(1);
+    if(mo === currentMonth) o.selected = true;
+    sel.appendChild(o);
+  });
+  document.getElementById('importModal').classList.add('open');
+}
+window.openImportModal = openImportModal;
+
+function closeImportModal(){
+  document.getElementById('importModal').classList.remove('open');
+}
+window.closeImportModal = closeImportModal;
+document.getElementById('importModal').addEventListener('click', function(e){ if(e.target===this) closeImportModal(); });
+
+function handleImportDrop(e){
+  e.preventDefault();
+  document.getElementById('importDropZone').classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if(file) handleImportFile(file);
+}
+window.handleImportDrop = handleImportDrop;
+
+function handleImportFile(file){
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      parseCartola(e.target.result, file.name);
+    } catch(err) {
+      showToast('Error al leer el archivo: ' + err.message, true);
+    }
+  };
+  // Read as text (CSV or XLS as text fallback)
+  if(file.name.endsWith('.csv')){
+    reader.readAsText(e => parseCartola(e.target.result, file.name));
+    reader.readAsText(file, 'latin1');
+  } else {
+    // For XLS: read as binary and parse manually
+    reader.readAsBinaryString(file);
+  }
+}
+window.handleImportFile = handleImportFile;
+
+function parseCartola(data, filename){
+  let rows = [];
+  
+  if(filename.endsWith('.csv')){
+    rows = parseCSV(data);
+  } else {
+    // XLS: extract text between delimiters using regex for Banco de Chile format
+    rows = parseXLSBinaryBancoChile(data);
+  }
+  
+  if(!rows.length){
+    showToast('No se encontraron transacciones en el archivo', true);
+    return;
+  }
+  
+  importRows = rows;
+  renderImportTable();
+}
+
+function parseCSV(text){
+  const lines = text.split('\n');
+  const rows = [];
+  let inData = false;
+  for(const line of lines){
+    const cols = line.split(',');
+    if(!inData){
+      // Detect header row
+      if(cols.some(c => c.includes('Fecha')) && cols.some(c => c.includes('Descripción') || c.includes('Descripcion'))){
+        inData = true;
+        continue;
+      }
+      continue;
+    }
+    // Data row: col1=date, col2=desc, col3=canal, col4=cargo, col5=abono
+    const date = (cols[1]||'').trim();
+    const desc = (cols[2]||'').trim();
+    const cargo = parseFloat((cols[4]||'').replace(/[^0-9.]/g,'')) || 0;
+    const abono = parseFloat((cols[5]||'').replace(/[^0-9.]/g,'')) || 0;
+    if(!date || !desc || date === 'Fecha') continue;
+    if(desc.includes('SALDO INICIAL') || desc.includes('Saldo Inicial')) continue;
+    rows.push({ date: normalizeDate(date), desc, cargo, abono });
+  }
+  return rows;
+}
+
+function parseXLSBinaryBancoChile(binary){
+  // Extract printable strings from binary XLS
+  // Find all cell strings by scanning for text content
+  const rows = [];
+  
+  // Convert binary to array for scanning
+  const bytes = [];
+  for(let i=0; i<binary.length; i++) bytes.push(binary.charCodeAt(i));
+  
+  // Extract all readable strings (length > 3)
+  const strings = [];
+  let cur = '';
+  for(let i=0; i<bytes.length; i++){
+    const b = bytes[i];
+    if(b >= 32 && b < 127){
+      cur += String.fromCharCode(b);
+    } else if(b === 0 && cur.length > 2){
+      // UTF-16 null byte — skip, keep building
+      if(cur.length > 3){ strings.push(cur.trim()); cur=''; }
+    } else {
+      if(cur.length > 3){ strings.push(cur.trim()); cur=''; }
+      else cur='';
+    }
+  }
+  if(cur.length > 3) strings.push(cur.trim());
+  
+  // Find date-like strings DD/MM pattern and build rows
+  const dateRe = /^\d{1,2}\/\d{1,2}$/;
+  const amountRe = /^\d{1,10}$/;
+  
+  let i = 0;
+  while(i < strings.length){
+    const s = strings[i];
+    if(dateRe.test(s)){
+      const date = s;
+      let desc = '', cargo = 0, abono = 0;
+      // Next significant string should be description
+      let j = i+1;
+      while(j < strings.length && j < i+5){
+        const ns = strings[j];
+        if(ns.length > 3 && !dateRe.test(ns) && !amountRe.test(ns)){
+          desc = ns; j++; break;
+        }
+        j++;
+      }
+      // Skip canal, find amounts
+      while(j < strings.length && j < i+8){
+        const ns = strings[j];
+        if(amountRe.test(ns) && parseInt(ns) > 0){
+          if(!cargo){ cargo = parseInt(ns); }
+          else if(!abono){ abono = parseInt(ns); }
+        }
+        j++;
+      }
+      if(desc && (cargo > 0 || abono > 0)){
+        if(!desc.includes('SALDO INICIAL') && !desc.includes('Saldo')){
+          rows.push({ date: normalizeDate(date), desc, cargo, abono });
+        }
+      }
+      i = j;
+    } else {
+      i++;
+    }
+  }
+  return rows;
+}
+
+function normalizeDate(d){
+  // Convert DD/MM to YYYY-MM-DD using the import month
+  const sel = document.getElementById('importMonthSel');
+  const monthVal = sel ? sel.value : currentMonth;
+  const [yr, mo] = monthVal.split('-');
+  const parts = d.split('/');
+  if(parts.length === 2){
+    const day = parts[0].padStart(2,'0');
+    return `${yr}-${mo}-${day}`;
+  }
+  return d;
+}
+
+// ── Auto-classify using keyword rules ─────────────────────────
+const AUTO_RULES = [
+  // Keywords → category name (case-insensitive)
+  { kw: ['UBER EATS','RAPPI','PEDIDOSYA','JUNAEB'], cat: 'Restaurantes / Delivery' },
+  { kw: ['UBER','CABIFY','TAXI','DIDI'], cat: 'Transporte (Uber / Taxi)' },
+  { kw: ['SHELL','COPEC','PETROBRAS','BENCIN','ENEX'], cat: 'Bencina' },
+  { kw: ['JUMBO','LIDER','UNIMARC','SANTA ISABEL','TOTTUS','ACUENTA'], cat: 'Supermercado' },
+  { kw: ['FARMACIA','SALCOBRAND','CRUZ VERDE','AHUMADA','CLINICA','HOSPITAL'], cat: 'Salud / Farmacia' },
+  { kw: ['RIPLEY','FALABELLA','PARIS','ZARA','H&M','FOREVER','CALZADO','ROPA'], cat: 'Ropa / Calzado' },
+  { kw: ['EASY','SODIMAC','HOMECENTER','FERRET','CONSTRUMART'], cat: 'Hogar / Ferretería' },
+  { kw: ['NETFLIX','SPOTIFY','STEAM','CINE','HOYTS','CINEMARK'], cat: 'Entretenimiento / Viajes' },
+  { kw: ['MERCADOLIBRE','MERCADO LIBRE','MELI'], cat: 'Mercadolibre' },
+  { kw: ['AMAZON','ALIEXPRESS','SHEIN'], cat: 'Compras Online' },
+  { kw: ['SUPERZOO','DR PET','PETCO','VETERINAR'], cat: 'Mascotas' },
+  { kw: ['PADEL','EASYCANCHA','CANCHA','SQUASH'], cat: 'Clases Padel' },
+  { kw: ['ABASTIBLE','GAS'], cat: 'Gas (Abastible)' },
+  { kw: ['AGUAS CORDILLERA','AGUAS ANDINAS'], cat: 'Agua (Aguas Cordillera)' },
+  { kw: ['SERVIPAG','TAG','VIA TICKET'], cat: 'Consumos/Servicios (Servipag)' },
+  { kw: ['CAJERO','ATM'], cat: 'Cajero' },
+  { kw: ['ALMUERZO','CASINO','ARAMARK','SODEXO','MANUCA','RESTAURANT','CAFE','COFFEE'], cat: 'Almuerzos' },
+  { kw: ['VERISURE','BCI SEGURO','CHUBB'], cat: 'Seguros Auto/Hogar (BCI + Verisure)' },
+  { kw: ['INMOBILIARIA SANTA ANA','SANTA ANA'], cat: 'Bodega SJ (Inmobiliaria Santa Ana)' },
+  { kw: ['BENJAMIN DELARD','ARRIENDO CASA'], cat: 'Arriendo casa (Benjamin Delard)' },
+  { kw: ['COLEGIOS','COLEGIO','ESCUELA','LICEO'], cat: 'Colegios hijas — PAC TC 8880' },
+  { kw: ['TRASPASO A:GERMAN','TRASPASO A:German'], cat: null }, // skip self-transfers
+  { kw: ['INTERESES LINEA','AMORTIZACION'], cat: 'Crédito Edwards (consolidado)' },
+  { kw: ['NIÑIT','KIDSTOPIA','JUGUETE','BEBE','BABY'], cat: 'Niñitas' },
+  { kw: ['PUERTECILLO'], cat: 'Puertecillo' },
+];
+
+function autoClassify(){
+  const rows = document.querySelectorAll('#importTbody tr');
+  rows.forEach(tr => {
+    const descEl = tr.querySelector('.imp-desc');
+    const catSel = tr.querySelector('.import-cat-sel');
+    const skipCb = tr.querySelector('.import-skip-cb');
+    if(!descEl || !catSel) return;
+    const desc = descEl.textContent.toUpperCase();
+    for(const rule of AUTO_RULES){
+      if(rule.kw.some(k => desc.includes(k.toUpperCase()))){
+        if(rule.cat === null){
+          skipCb.checked = true;
+          tr.classList.add('import-row-skip');
+        } else {
+          catSel.value = rule.cat;
+          if(catSel.value) catSel.classList.add('assigned');
+        }
+        break;
+      }
+    }
+  });
+  updateImportFooter();
+  showToast('⚡ Auto-clasificación aplicada');
+}
+window.autoClassify = autoClassify;
+
+function renderImportTable(){
+  const tbody = document.getElementById('importTbody');
+  tbody.innerHTML = '';
+  const allCats = BUDGET_ACTIVE.map(b => b.name);
+  
+  importRows.forEach((row, idx) => {
+    const tr = document.createElement('tr');
+    tr.dataset.idx = idx;
+    const isIncome = row.abono > 0 && row.cargo === 0;
+    const amount = isIncome ? row.abono : row.cargo;
+    
+    // Category selector
+    const catOptions = `<option value="">— sin categoría —</option>`
+      + (isIncome 
+        ? `<option value="__income__Sueldo Icalma">💚 Sueldo Icalma</option>
+           <option value="__income__CTuristico">💚 CTuristico</option>
+           <option value="__income__Ingreso Itaú (arriendo depto.)">💚 Ingreso Itaú</option>
+           <option value="__income__Subsidio Salud">💚 Subsidio Salud</option>
+           <option value="__income__Transferencia Elisa">💚 Transferencia Elisa</option>
+           <option value="__income__Papá">💚 Papá</option>
+           <option value="__income__Otros Ingresos">💚 Otros Ingresos</option>`
+        : GROUPS.map(g => 
+            `<optgroup label="${g}">`
+            + BUDGET_ACTIVE.filter(b=>b.g===g).map(b=>`<option value="${b.name}">${b.name}</option>`).join('')
+            + `</optgroup>`
+          ).join('')
+      )
+      + `<option value="__skip__">⛔ Ignorar</option>`;
+    
+    tr.innerHTML = `
+      <td><input type="checkbox" class="import-skip-cb" checked onchange="toggleSkip(this)"></td>
+      <td style="font-family:var(--font-mono);font-size:11px;color:var(--text3);white-space:nowrap;">${row.date.slice(5).replace('-','/')}</td>
+      <td class="imp-desc" style="font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${row.desc}">${row.desc}</td>
+      <td class="import-amount ${isIncome?'income':''}">${isIncome?'+':'-'} $${amount.toLocaleString('es-CL')}</td>
+      <td><select class="import-cat-sel" onchange="onCatChange(this)">${catOptions}</select></td>`;
+    
+    tbody.appendChild(tr);
+  });
+  
+  document.getElementById('importCount').textContent = importRows.length;
+  document.getElementById('importPreview').style.display = 'block';
+  document.getElementById('importDropArea').style.display = 'none';
+  updateImportFooter();
+}
+
+function toggleSkip(cb){
+  const tr = cb.closest('tr');
+  if(cb.checked) tr.classList.remove('import-row-skip');
+  else tr.classList.add('import-row-skip');
+  updateImportFooter();
+}
+window.toggleSkip = toggleSkip;
+
+function onCatChange(sel){
+  sel.classList.toggle('assigned', !!sel.value && sel.value !== '__skip__');
+  updateImportFooter();
+}
+window.onCatChange = onCatChange;
+
+function updateImportFooter(){
+  const rows = document.querySelectorAll('#importTbody tr');
+  let total = 0, assigned = 0, skipped = 0;
+  rows.forEach(tr => {
+    const cb = tr.querySelector('.import-skip-cb');
+    const sel = tr.querySelector('.import-cat-sel');
+    if(!cb.checked){ skipped++; return; }
+    total++;
+    if(sel.value && sel.value !== '__skip__') assigned++;
+  });
+  document.getElementById('importFooterInfo').innerHTML = 
+    `<span>${assigned}</span> categorizados · ${total - assigned} sin categoría · ${skipped} ignorados`;
+  document.getElementById('btnImportConfirm').disabled = assigned === 0;
+}
+
+async function confirmImport(){
+  const month = document.getElementById('importMonthSel').value;
+  const rows = document.querySelectorAll('#importTbody tr');
+  const btn = document.getElementById('btnImportConfirm');
+  
+  const toSave = [];
+  rows.forEach((tr, i) => {
+    const cb = tr.querySelector('.import-skip-cb');
+    const sel = tr.querySelector('.import-cat-sel');
+    if(!cb.checked || !sel.value || sel.value === '__skip__') return;
+    const row = importRows[i];
+    const isIncome = sel.value.startsWith('__income__');
+    const cat = isIncome ? sel.value.replace('__income__','') : sel.value;
+    const amount = row.abono > 0 && row.cargo === 0 ? row.abono : row.cargo;
+    toSave.push({ type: isIncome ? 'ingreso' : 'gasto', date: row.date, desc: row.desc, cat, amount });
+  });
+  
+  if(!toSave.length){ showToast('Nada que guardar', true); return; }
+  
+  btn.disabled = true; btn.textContent = `Guardando ${toSave.length} transacciones...`;
+  setSyncStatus('syncing', 'Importando...');
+  
+  try {
+    // Batch write
+    const colGastos = collection(db, 'gastos', month, 'txns');
+    const colIngresos = collection(db, 'ingresos', month, 'txns');
+    let count = 0;
+    for(const t of toSave){
+      await addDoc(t.type === 'ingreso' ? colIngresos : colGastos, {
+        date: t.date, desc: t.desc, cat: t.cat, amount: t.amount,
+        ts: Date.now() + count
+      });
+      count++;
+      btn.textContent = `Guardando ${count}/${toSave.length}...`;
+    }
+    if(month !== currentMonth){
+      currentMonth = month;
+      document.getElementById('monthSelect').value = month;
+      subscribeMonth(month);
+    }
+    closeImportModal();
+    showToast(`✅ ${toSave.length} transacciones importadas al ${month}`);
+    setSyncStatus('online', 'Sincronizado ✓');
+  } catch(e){
+    showToast('Error al guardar: ' + e.message, true);
+    setSyncStatus('error', 'Error');
+    btn.disabled = false; btn.textContent = '💾 Guardar en Firebase';
+  }
+}
+window.confirmImport = confirmImport;
+
 </script>
+
+  <!-- Import modal -->
+  <div class="import-modal-overlay" id="importModal">
+    <div class="import-modal">
+      <div class="import-header">
+        <div style="font-size:22px;">📥</div>
+        <div class="import-header-title">Importar Cartola Banco de Chile</div>
+        <button class="import-close" onclick="closeImportModal()">✕</button>
+      </div>
+      <div class="import-body">
+        <!-- Step 1: drop zone -->
+        <div id="importDropArea">
+          <div class="import-drop-zone" id="importDropZone"
+               onclick="document.getElementById('importFileInput').click()"
+               ondragover="event.preventDefault();this.classList.add('drag-over')"
+               ondragleave="this.classList.remove('drag-over')"
+               ondrop="handleImportDrop(event)">
+            <div class="import-drop-icon">📂</div>
+            <div class="import-drop-label">Arrastra tu cartola .XLS aquí o haz click para seleccionar</div>
+            <div class="import-drop-sub">Formato Banco de Chile · Columnas: Fecha, Descripción, Canal, Cargos, Abonos</div>
+          </div>
+          <input type="file" id="importFileInput" accept=".xls,.xlsx,.csv" style="display:none"
+                 onchange="handleImportFile(this.files[0])">
+        </div>
+        <!-- Step 2: preview table -->
+        <div class="import-preview" id="importPreview" style="display:none">
+          <div class="import-preview-title">
+            <span>Transacciones encontradas</span>
+            <span class="import-count" id="importCount">0</span>
+            <span style="flex:1"></span>
+            <span style="font-size:11px;color:var(--text3);">Mes destino:</span>
+            <select class="import-month-sel" id="importMonthSel"></select>
+            <button class="import-auto-btn" onclick="autoClassify()">⚡ Auto-clasificar</button>
+          </div>
+          <div class="import-table-wrap">
+            <table class="import-table" id="importTable">
+              <thead>
+                <tr>
+                  <th style="width:30px">✓</th>
+                  <th>Fecha</th>
+                  <th>Descripción</th>
+                  <th>Monto</th>
+                  <th style="min-width:180px">Categoría</th>
+                </tr>
+              </thead>
+              <tbody id="importTbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="import-footer">
+        <div class="import-footer-info" id="importFooterInfo">—</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="import-auto-btn" onclick="closeImportModal()">Cancelar</button>
+          <button class="btn-import-confirm" id="btnImportConfirm"
+                  onclick="confirmImport()" disabled>
+            💾 Guardar en Firebase
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>

@@ -1881,23 +1881,31 @@ function parseCSV(text){
   const lines = text.split('\n');
   const rows = [];
   let inData = false;
+  let cargoCol = 4, abonoCol = 5; // default col indices
   for(const line of lines){
     const cols = line.split(',');
     if(!inData){
-      // Detect header row
-      if(cols.some(c => c.includes('Fecha')) && cols.some(c => c.includes('Descripción') || c.includes('Descripcion'))){
+      // Detect header row — accept both PESOS and CLP column names
+      if(cols.some(c => c.includes('Fecha')) && cols.some(c => c.includes('Descripci'))){
         inData = true;
+        // Find exact cargo/abono column indices (handle PESOS and CLP variants)
+        cargoCol = cols.findIndex(c => /Cargos/i.test(c));
+        abonoCol = cols.findIndex(c => /Abonos/i.test(c));
+        if(cargoCol < 0) cargoCol = 4;
+        if(abonoCol < 0) abonoCol = 5;
         continue;
       }
       continue;
     }
-    // Data row: col1=date, col2=desc, col3=canal, col4=cargo, col5=abono
+    // Data row: col0=empty, col1=date, col2=desc, col3=canal, col4=cargo, col5=abono
     const date = (cols[1]||'').trim();
     const desc = (cols[2]||'').trim();
-    const cargo = parseFloat((cols[4]||'').replace(/[^0-9.]/g,'')) || 0;
-    const abono = parseFloat((cols[5]||'').replace(/[^0-9.]/g,'')) || 0;
+    const cargo = parseFloat((cols[cargoCol]||'').replace(/[^0-9.]/g,'')) || 0;
+    const abono = parseFloat((cols[abonoCol]||'').replace(/[^0-9.]/g,'')) || 0;
     if(!date || !desc || date === 'Fecha') continue;
     if(desc.includes('SALDO INICIAL') || desc.includes('Saldo Inicial')) continue;
+    // Skip rows with no movement
+    if(cargo === 0 && abono === 0) continue;
     rows.push({ date: normalizeDate(date), desc, cargo, abono });
   }
   return rows;
@@ -1929,10 +1937,10 @@ function parseXLSBinaryBancoChile(binary){
   }
   if(cur.length > 3) strings.push(cur.trim());
   
-  // Find date-like strings DD/MM pattern and build rows
-  const dateRe = /^\d{1,2}\/\d{1,2}$/;
+  // Find date-like strings — both DD/MM and DD/MM/YYYY
+  const dateRe = /^\d{1,2}\/\d{1,2}(\/\d{4})?$/;
   const amountRe = /^\d{1,10}$/;
-  
+
   let i = 0;
   while(i < strings.length){
     const s = strings[i];
@@ -1971,12 +1979,20 @@ function parseXLSBinaryBancoChile(binary){
 }
 
 function normalizeDate(d){
-  // Convert DD/MM to YYYY-MM-DD using the import month
-  const sel = document.getElementById('importMonthSel');
-  const monthVal = sel ? sel.value : currentMonth;
-  const [yr, mo] = monthVal.split('-');
+  // Handle both DD/MM (Cartola Histórica) and DD/MM/YYYY (Movimientos)
   const parts = d.split('/');
+  if(parts.length === 3){
+    // Full date: DD/MM/YYYY → YYYY-MM-DD
+    const day = parts[0].padStart(2,'0');
+    const mon = parts[1].padStart(2,'0');
+    const yr  = parts[2];
+    return `${yr}-${mon}-${day}`;
+  }
   if(parts.length === 2){
+    // Short date: DD/MM — use selected import month for year
+    const sel = document.getElementById('importMonthSel');
+    const monthVal = sel ? sel.value : currentMonth;
+    const [yr, mo] = monthVal.split('-');
     const day = parts[0].padStart(2,'0');
     return `${yr}-${mo}-${day}`;
   }
@@ -2008,6 +2024,24 @@ const AUTO_RULES = [
   { kw: ['BENJAMIN DELARD','ARRIENDO CASA'], cat: 'Arriendo casa (Benjamin Delard)' },
   { kw: ['COLEGIOS','COLEGIO','ESCUELA','LICEO'], cat: 'Colegios hijas — PAC TC 8880' },
   { kw: ['TRASPASO A:GERMAN','TRASPASO A:German'], cat: null }, // skip self-transfers
+  { kw: ['TRASPASO A:GONZALO','TRASPASO A:Gonzalo'], cat: null }, // skip other transfers out
+  { kw: ['TRASPASO DE:INMOBILIARIA ICALMA','Inmobiliaria Icalma'], cat: 'CTuristico' },
+  { kw: ['TRASPASO DE:MANUEL BALMACEDA','Manuel Balmaceda'], cat: 'Ingreso Itaú (arriendo depto.)' },
+  { kw: ['TRASPASO A:Marcela Frazzoni','FRAZZONI'], cat: 'Clases Padel' },
+  { kw: ['TRASPASO A:Inmobiliaria e Inversi'], cat: 'Dividendo Depto. (neto $0)' },
+  { kw: ['CARGO POR PAGO TC'], cat: 'Crédito Edwards (consolidado)' },
+  { kw: ['SNACKCENTER'], cat: 'Almuerzos' },
+  { kw: ['WELLNESS ACADEMY','WELLNESS'], cat: 'Clases Padel' },
+  { kw: ['NICOLAS WESTENENK','WESTENENK'], cat: null }, // skip unless known
+  { kw: ['OKM SANTA BLANCA','OKM'], cat: 'Bencina' },
+  { kw: ['GIRO CAJERO','GIRO CAJERO AUTOMATICO'], cat: 'Efectivo (Cajero)' },
+  { kw: ['PAYU *UBER TRIP','PAYU *UBER'], cat: 'Transporte (Uber / Taxi)' },
+  { kw: ['MERPAGO*MERCADOLI','MERPAGO*MERCADO'], cat: 'Mercadolibre' },
+  { kw: ['MERPAGO*GUAYACAN'], cat: 'Restaurantes / Delivery' },
+  { kw: ['MERPAGO*DINTOURAR'], cat: 'Entretenimiento / Viajes' },
+  { kw: ['CASA ROJA RETAIL'], cat: 'Ropa / Calzado' },
+  { kw: ['SB 615','SALCOBRAND'], cat: 'Salud / Farmacia' },
+  { kw: ['DESENLANCE PIEDRA'], cat: 'Restaurantes / Delivery' },
   { kw: ['INTERESES LINEA','AMORTIZACION'], cat: 'Crédito Edwards (consolidado)' },
   { kw: ['NIÑIT','KIDSTOPIA','JUGUETE','BEBE','BABY'], cat: 'Niñitas' },
   { kw: ['PUERTECILLO'], cat: 'Puertecillo' },
